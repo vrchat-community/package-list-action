@@ -8,6 +8,10 @@ runs:
   using: "composite"
   steps:
   
+    - name: List Dir
+      run: ls
+      shell: bash
+      
     - name: Cache .nuke/temp, ~/.nuget/packages
       uses: actions/cache@v2
       with:
