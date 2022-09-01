@@ -47,9 +47,9 @@ jobs:
         run: ./build.cmd BuildRepoListing
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/upload-artifact@v1
+      - uses: actions/upload-artifact@v2
         with:
-          name: repolist.json
+          name: repolist
           path: docs/repolist.json
           
           
@@ -62,6 +62,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      - uses: actions/download-artifact@v2
+        with:
+          name: repolist
       - name: Setup Pages
         uses: actions/configure-pages@v2
       - name: Upload artifact
