@@ -82,7 +82,7 @@ class Build : NukeBuild
 
     // Assumes single package in this type of listing, make a different one for multi-package sets
     Target BuildRepoListing => _ => _
-        .Executes( async () =>
+        .Executes(async () =>
         {
             var packages = new List<IVRCPackage>();
             var repoName = GitHubActions.Repository.Replace($"{GitHubActions.RepositoryOwner}/", "");
@@ -90,7 +90,8 @@ class Build : NukeBuild
             foreach (var release in releases)
             {
                 // Release must have package.json and .zip file, or else it will throw an exception here
-                ReleaseAsset manifestAsset = release.Assets.First(asset => asset.Name.CompareTo(PackageManifestFilename) == 0);
+                ReleaseAsset manifestAsset =
+                    release.Assets.First(asset => asset.Name.CompareTo(PackageManifestFilename) == 0);
                 ReleaseAsset zipAsset = release.Assets.First(asset => asset.Name.EndsWith(".zip"));
 
                 using (var requestMessage =
@@ -99,7 +100,7 @@ class Build : NukeBuild
                     requestMessage.Headers.Accept.ParseAdd("application/octet-stream");
                     requestMessage.Headers.Authorization =
                         new AuthenticationHeaderValue("Bearer", GitHubActions.Token);
-    
+
                     var result = await Http.SendAsync(requestMessage);
                     if (result.IsSuccessStatusCode)
                     {
@@ -114,7 +115,7 @@ class Build : NukeBuild
                     }
                 }
             }
-            
+
             var repoList = new VRCRepoList(packages)
             {
                 author = ListAuthorName,
@@ -123,10 +124,11 @@ class Build : NukeBuild
             };
 
             string savePath = ListPublishDirectory / "index.json";
-            
+
             FileSystemTasks.EnsureExistingParentDirectory(savePath);
             repoList.Save(savePath);
-        });
+        })
+        .Triggers(RebuildHomePage);
 
     Target RebuildHomePage => _ => _
         .Executes(() =>
