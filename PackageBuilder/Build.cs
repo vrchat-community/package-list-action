@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Nuke.Common;
 using Nuke.Common.CI.GitHubActions;
@@ -33,7 +32,7 @@ class Build : NukeBuild
     private const string VRCAgent = "VCCBootstrap 1.0";
     
     [Parameter("PackageName")]
-    private string CurrentPackageName;
+    private string CurrentPackageName = "com.vrchat.demo-template";
 
     [Parameter("Path to Target Package")] private string TargetPackagePath;
     
