@@ -1,0 +1,21 @@
+name: "Print Package Version"
+description: "Prints the version of the package specified"
+outputs:
+  version:
+    description: "Package Version"
+    value: ${{ steps.foo.outputs.version }}
+runs:
+  using: "composite"
+  steps:
+  
+    - name: Cache .nuke/temp, ~/.nuget/packages
+      uses: actions/cache@v2
+      with:
+        path: |
+          .nuke/temp
+          ~/.nuget/packages
+        key: ${{ runner.os }}-${{ hashFiles('**/global.json', '**/*.csproj') }}
+        
+    - id: foo
+      run: ./build.cmd ConfigurePackageVersion
+      shell: bash
