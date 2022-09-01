@@ -10,7 +10,6 @@ using Nuke.Common;
 using Nuke.Common.CI.GitHubActions;
 using Nuke.Common.IO;
 using Octokit;
-using Serilog;
 using VRC.PackageManagement.Core.Types.Packages;
 using ProductHeaderValue = Octokit.ProductHeaderValue;
 
@@ -36,8 +35,6 @@ class Build : NukeBuild
     
     [Parameter("PackageName")]
     private string CurrentPackageName = "com.vrchat.demo-template";
-
-    private ILogger Logger = Log.ForContext<Build>();
 
     [Parameter("Path to Target Package")] private string TargetPackagePath;
     
@@ -92,9 +89,9 @@ class Build : NukeBuild
                     {
                         // Add latest package version
                         var manifesString = await result.Content.ReadAsStringAsync();
-                        Logger.Information($"Downloaded manifest: {manifesString}");
+                        Serilog.Log.Information($"Downloaded manifest: {manifesString}");
                         var item = VRCPackageManifest.FromJson(manifesString);
-                        Logger.Information($"Made {item} with {item.Id} and versions: {item.version}");
+                        Serilog.Log.Information($"Made {item} with {item.Id} and versions: {item.version}");
                         packages.Add(item);
                     }
                     else
@@ -111,7 +108,7 @@ class Build : NukeBuild
                 url = "https://TBD"
             };
             
-            Logger.Information($"Made RepoList:\n {repoList}");
+            Serilog.Log.Information($"Made RepoList:\n {repoList}");
         });
 
     static HttpClient _http;
