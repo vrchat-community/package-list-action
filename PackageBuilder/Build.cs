@@ -2,7 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using Nuke.Common;
@@ -10,6 +11,7 @@ using Nuke.Common.CI.GitHubActions;
 using Nuke.Common.IO;
 using Octokit;
 using VRC.PackageManagement.Core.Types.Packages;
+using ProductHeaderValue = Octokit.ProductHeaderValue;
 
 [GitHubActions(
     "GHTest",
@@ -73,11 +75,26 @@ class Build : NukeBuild
             var releases = await Client.Repository.Release.GetAll(GitHubActions.RepositoryOwner, repoName);
             foreach (var release in releases)
             {
-                var manifestUrl = release.Assets.First(asset => asset.Name.CompareTo(PackageManifestFilename) == 0)
-                    .BrowserDownloadUrl;
-                
-                // Add latest package version
-                packages.Add(VRCPackageManifest.FromJson(await GetRemoteString(manifestUrl)));
+                ReleaseAsset manifestAsset = release.Assets.First(asset => asset.Name.CompareTo(PackageManifestFilename) == 0);
+
+                using (var requestMessage =
+                    new HttpRequestMessage(HttpMethod.Get, manifestAsset.Url))
+                {
+                    requestMessage.Headers.Accept.ParseAdd("application/octet-stream");
+                    requestMessage.Headers.Authorization =
+                        new AuthenticationHeaderValue("Bearer", GitHubActions.Token);
+    
+                    var result = await Http.SendAsync(requestMessage);
+                    if (result.IsSuccessStatusCode)
+                    {
+                        // Add latest package version
+                        packages.Add(VRCPackageManifest.FromJson(await result.Content.ReadAsStringAsync()));
+                    }
+                    else
+                    {
+                        Serilog.Log.Error($"Could not download manifest from {manifestAsset.Url}");
+                    }
+                }
             }
             
             var repoList = new VRCRepoList(packages)
@@ -93,14 +110,26 @@ class Build : NukeBuild
             
             Serilog.Log.Information($"Made RepoList:\n {0}", repoList.ToString());
         });
-    
+
+    static HttpClient _http;
+
+    public static HttpClient Http
+    {
+        get
+        {
+            if (_http != null)
+            {
+                return _http;
+            }
+
+            _http = new HttpClient();
+            _http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(VRCAgent));
+            return _http;
+        }
+    }
+
     public static async Task<string> GetRemoteString(string url)
     {
-        using (var client = new WebClient())
-        {
-            // Add User Agent or else CloudFlare will return 1020
-            client.Headers.Add(HttpRequestHeader.UserAgent, VRCAgent);
-            return await client.DownloadStringTaskAsync(url);
-        }
+        return await Http.GetStringAsync(url);
     }
 }
