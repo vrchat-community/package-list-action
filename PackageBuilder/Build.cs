@@ -90,30 +90,18 @@ class Build : NukeBuild
             foreach (var release in releases)
             {
                 // Release must have package.json and .zip file, or else it will throw an exception here
-                ReleaseAsset manifestAsset =
-                    release.Assets.First(asset => asset.Name.CompareTo(PackageManifestFilename) == 0);
+                var manifest = await GetManifestFromRelease(release);
+                if (manifest == null)
+                {
+                    Serilog.Log.Error($"Could not get manifest from {release.Name}");
+                    return;
+                }
+                
                 ReleaseAsset zipAsset = release.Assets.First(asset => asset.Name.EndsWith(".zip"));
 
-                using (var requestMessage =
-                    new HttpRequestMessage(HttpMethod.Get, manifestAsset.Url))
-                {
-                    requestMessage.Headers.Accept.ParseAdd("application/octet-stream");
-                    requestMessage.Headers.Authorization =
-                        new AuthenticationHeaderValue("Bearer", GitHubActions.Token);
-
-                    var result = await Http.SendAsync(requestMessage);
-                    if (result.IsSuccessStatusCode)
-                    {
-                        // Set url to .zip asset, add latest package version
-                        var item = VRCPackageManifest.FromJson(await result.Content.ReadAsStringAsync());
-                        item.url = zipAsset.BrowserDownloadUrl;
-                        packages.Add(item);
-                    }
-                    else
-                    {
-                        Serilog.Log.Error($"Could not download manifest from {manifestAsset.Url}");
-                    }
-                }
+                // Set url to .zip asset, add latest package version
+                manifest.url = zipAsset.BrowserDownloadUrl;
+                packages.Add(manifest);
             }
 
             var repoList = new VRCRepoList(packages)
@@ -130,6 +118,37 @@ class Build : NukeBuild
         })
         .Triggers(RebuildHomePage);
 
+    async Task<HttpResponseMessage> GetAuthenticatedResponse(string url)
+    {
+        using (var requestMessage =
+            new HttpRequestMessage(HttpMethod.Get, url))
+        {
+            requestMessage.Headers.Accept.ParseAdd("application/octet-stream");
+            requestMessage.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", GitHubActions.Token);
+
+           return await Http.SendAsync(requestMessage);
+        }
+    }
+
+    async Task<VRCPackageManifest> GetManifestFromRelease(Release release)
+    {
+        // Release must have package.json and .zip file, or else it will throw an exception here
+        ReleaseAsset manifestAsset =
+            release.Assets.First(asset => asset.Name.CompareTo(PackageManifestFilename) == 0);
+
+        var result = await GetAuthenticatedResponse(manifestAsset.Url);
+        if (result.IsSuccessStatusCode)
+        {
+            return VRCPackageManifest.FromJson(await result.Content.ReadAsStringAsync());
+        }
+        else
+        {
+            Serilog.Log.Error($"Could not download manifest from {manifestAsset.Url}");
+            return null;
+        }
+    }
+
     Target RebuildHomePage => _ => _
         .Executes(async () =>
         {
@@ -139,10 +158,13 @@ class Build : NukeBuild
             // Assumes we're publishing both zip and unitypackage
             var zipUrl = release.Assets.First(asset => asset.Name.EndsWith(".zip")).BrowserDownloadUrl;
             var unityPackageUrl = release.Assets.First(asset => asset.Name.EndsWith(".unitypackage")).BrowserDownloadUrl;
-            
+            var manifest = await GetManifestFromRelease(release);
+            if (manifest == null)
+            {
+                throw new Exception($"Could not get Manifest for release {release.Name}");
+            }
             var indexPath = ListPublishDirectory / "index.html";
             string indexTemplateContent = File.ReadAllText(indexPath);
-            var manifest = VRCPackageManifest.FromJson(GetManifestContents());
             var rendered = Scriban.Template.Parse(indexTemplateContent).Render(new {manifest, assets=new{zip=zipUrl, unityPackage=unityPackageUrl}}, member => member.Name);
             File.WriteAllText(indexPath, rendered);
             Serilog.Log.Information($"Updated index page at {indexPath}");
