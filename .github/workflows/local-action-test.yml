@@ -7,6 +7,5 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - id: foo
-        uses: actions/action@main
+        uses: ./ # action in root
       - run: echo version ${{ steps.foo.outputs.version }}
-        shell: bash

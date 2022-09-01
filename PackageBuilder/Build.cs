@@ -8,7 +8,7 @@ using Nuke.Common.IO;
 [GitHubActions(
     "GHTest",
     GitHubActionsImage.UbuntuLatest,
-    On = new[] { GitHubActionsTrigger.Push },
+    On = new[] { GitHubActionsTrigger.WorkflowDispatch },
     InvokedTargets = new[] { nameof(ConfigurePackageVersion) })]
 class Build : NukeBuild
 {

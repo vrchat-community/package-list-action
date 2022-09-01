@@ -16,7 +16,7 @@
 
 name: GHTest
 
-on: [push]
+on: [workflow_dispatch]
 
 jobs:
   ubuntu-latest:
