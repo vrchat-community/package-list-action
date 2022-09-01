@@ -40,7 +40,7 @@ class Build : NukeBuild
     private readonly string ListName = "Example Listing";
     [Parameter("URL to published Listing")] // Todo: generate this automatically from repo info
     private readonly string ListURL = "https://momo-the-monster.github.io/package-list-action/index.json";
-
+    [Parameter("Directory to save index into")]
     private AbsolutePath ListPublishDirectory = RootDirectory / "docs";
     
     [Parameter("PackageName")]
