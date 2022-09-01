@@ -8,8 +8,12 @@ runs:
   using: "composite"
   steps:
   
-    - name: List Dir
-      run: ls
+    - name: List Root
+      run: ls /
+      shell: bash
+      
+    - name: List Local
+      run: ls ./
       shell: bash
       
     - name: Cache .nuke/temp, ~/.nuget/packages
