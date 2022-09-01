@@ -3,9 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="">
-    <meta name="author" content="Your Name Here">
-    <title>Example Listing</title>
+    <meta name="author" content="{manifest.author}">
+    <title>{{manifest.displayName}}</title>
 
     <link rel="canonical" href="https://getbootstrap.com/docs/5.2/examples/cover/">
 
@@ -77,8 +76,9 @@
     </header>
     
     <main class="px-3">
-        <h1>Example Package</h1>
-        <p class="lead">This is information about the package</p>
+        <h1>{{manifest.displayName}}</h1>
+        <h4>{{manifest.name}} {{manifest.version}}</h4>
+        <p class="lead">{{manifest.description}}</p>
         <p class="lead">
             <a href="#" class="btn btn-outline-success">Download Zip</a>
         </p>
@@ -91,7 +91,7 @@
     </main>
 
     <footer class="mt-auto text-white-50">
-        <p>Example Package by <a href="https://twitter.com/vrchat" class="text-white">@vrchat</a>.</p>
+        <p>Example Package by <a href="{{manifest.author.url}}" class="text-white">{{manifest.author.name}}</a>.</p>
     </footer>
 </div>
 

@@ -18,6 +18,10 @@
           "type": "boolean",
           "description": "Indicates to continue a previously failed build attempt"
         },
+        "CurrentPackageName": {
+          "type": "string",
+          "description": "PackageName"
+        },
         "Help": {
           "type": "boolean",
           "description": "Shows the help text for this build assembly"
@@ -42,6 +46,22 @@
             "VisualStudio",
             "VSCode"
           ]
+        },
+        "ListAuthorName": {
+          "type": "string",
+          "description": "Name of Listing Author"
+        },
+        "ListName": {
+          "type": "string",
+          "description": "Name of Listing"
+        },
+        "ListPublishDirectory": {
+          "type": "string",
+          "description": "Directory to save index into"
+        },
+        "ListURL": {
+          "type": "string",
+          "description": "URL to published Listing"
         },
         "NoLogo": {
           "type": "boolean",
@@ -73,7 +93,8 @@
             "type": "string",
             "enum": [
               "BuildRepoListing",
-              "ConfigurePackageVersion"
+              "ConfigurePackageVersion",
+              "RebuildHomePage"
             ]
           }
         },
@@ -84,7 +105,8 @@
             "type": "string",
             "enum": [
               "BuildRepoListing",
-              "ConfigurePackageVersion"
+              "ConfigurePackageVersion",
+              "RebuildHomePage"
             ]
           }
         },

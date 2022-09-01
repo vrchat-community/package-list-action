@@ -46,21 +46,25 @@ class Build : NukeBuild
     [Parameter("PackageName")]
     private string CurrentPackageName = "com.vrchat.demo-template";
 
-    [Parameter("Path to Target Package")] private string TargetPackagePath;
+    [Parameter("Path to Target Package")] private string TargetPackagePath => RootDirectory / "Packages"  / CurrentPackageName;
     
     Target ConfigurePackageVersion => _ => _
         .Executes(() =>
         {
-            Serilog.Log.Information($"TargetPackagePath is {TargetPackagePath}");
-            var manifestFile = (AbsolutePath)TargetPackagePath / PackageManifestFilename;
-            var jManifest = JObject.Parse(File.ReadAllText(manifestFile));
+            var jManifest = JObject.Parse(GetManifestContents());
             CurrentPackageVersion = jManifest.Value<string>(PackageVersionProperty);
             if (string.IsNullOrWhiteSpace(CurrentPackageVersion))
             {
-                throw new Exception($"Could not find Package Version in {manifestFile.Name}");
+                throw new Exception($"Could not find Package Version in manifest");
             }
-            Serilog.Log.Information($"Found version {CurrentPackageVersion} for {manifestFile}");
+            Serilog.Log.Information($"Found version {CurrentPackageVersion}");
         });
+
+    private string GetManifestContents()
+    {
+        var manifestFile = (AbsolutePath)TargetPackagePath / PackageManifestFilename;
+        return File.ReadAllText(manifestFile);
+    }
     
     protected GitHubClient Client
     {
@@ -122,8 +126,17 @@ class Build : NukeBuild
             
             FileSystemTasks.EnsureExistingParentDirectory(savePath);
             repoList.Save(savePath);
-        })
-    ;
+        });
+
+    Target RebuildHomePage => _ => _
+        .Executes(() =>
+        {
+            var indexPath = ListPublishDirectory / "index.html";
+            string indexTemplateContent = File.ReadAllText(indexPath);
+            var manifest = VRCPackageManifest.FromJson(GetManifestContents());
+            var rendered = Scriban.Template.Parse(indexTemplateContent).Render(new {manifest=manifest}, member => member.Name);
+            File.WriteAllText(indexPath, rendered);
+        });
 
     static HttpClient _http;
 
