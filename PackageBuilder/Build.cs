@@ -5,7 +5,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Nuke.Common;
 using Nuke.Common.CI.GitHubActions;
@@ -17,9 +16,9 @@ using ProductHeaderValue = Octokit.ProductHeaderValue;
 [GitHubActions(
     "GHTest",
     GitHubActionsImage.UbuntuLatest,
-    On = new[] { GitHubActionsTrigger.WorkflowDispatch },
+    On = new[] { GitHubActionsTrigger.WorkflowDispatch, GitHubActionsTrigger.Push },
     EnableGitHubToken = true,
-    InvokedTargets = new[] { nameof(ConfigurePackageVersion) })]
+    InvokedTargets = new[] { nameof(BuildRepoListing) })]
 class Build : NukeBuild
 {
     public static int Main () => Execute<Build>(x => x.BuildRepoListing);
@@ -33,6 +32,8 @@ class Build : NukeBuild
     private const string PackageVersionProperty = "version";
     private string CurrentPackageVersion;
     private const string VRCAgent = "VCCBootstrap/1.0";
+
+    private AbsolutePath ListPublishDirectory = RootDirectory / "docs";
     
     [Parameter("PackageName")]
     private string CurrentPackageName = "com.vrchat.demo-template";
@@ -76,7 +77,9 @@ class Build : NukeBuild
             var releases = await Client.Repository.Release.GetAll(GitHubActions.RepositoryOwner, repoName);
             foreach (var release in releases)
             {
+                // Release must have package.json and .zip file, or else it will throw an exception here
                 ReleaseAsset manifestAsset = release.Assets.First(asset => asset.Name.CompareTo(PackageManifestFilename) == 0);
+                ReleaseAsset zipAsset = release.Assets.First(asset => asset.Name.EndsWith(".zip"));
 
                 using (var requestMessage =
                     new HttpRequestMessage(HttpMethod.Get, manifestAsset.Url))
@@ -88,11 +91,9 @@ class Build : NukeBuild
                     var result = await Http.SendAsync(requestMessage);
                     if (result.IsSuccessStatusCode)
                     {
-                        // Add latest package version
-                        var manifesString = await result.Content.ReadAsStringAsync();
-                        Serilog.Log.Information($"Downloaded manifest: {manifesString}");
-                        var item = VRCPackageManifest.FromJson(manifesString);
-                        Serilog.Log.Information($"Made {item} with {item.Id} and versions: {item.version}");
+                        // Set url to .zip asset, add latest package version
+                        var item = VRCPackageManifest.FromJson(await result.Content.ReadAsStringAsync());
+                        item.url = zipAsset.BrowserDownloadUrl;
                         packages.Add(item);
                     }
                     else
@@ -109,9 +110,10 @@ class Build : NukeBuild
                 url = "https://TBD"
             };
 
-            var repoListJson = JsonConvert.SerializeObject(repoList);
-            Serilog.Log.Information($"Made RepoList:\n {repoListJson}");
-        });
+            repoList.Save(ListPublishDirectory/"repolist.json");
+        })
+        .Produces(ListPublishDirectory/"repolist.json")
+    ;
 
     static HttpClient _http;
 

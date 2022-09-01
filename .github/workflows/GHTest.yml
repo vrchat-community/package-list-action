@@ -16,7 +16,7 @@
 
 name: GHTest
 
-on: [push,workflow_dispatch]
+on: [workflow_dispatch, push]
 
 jobs:
   ubuntu-latest:
@@ -31,7 +31,11 @@ jobs:
             .nuke/temp
             ~/.nuget/packages
           key: ${{ runner.os }}-${{ hashFiles('**/global.json', '**/*.csproj') }}
-      - name: Run BuildRepoListing
+      - name: Run './build.cmd BuildRepoListing'
         run: ./build.cmd BuildRepoListing
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v1
+        with:
+          name: repolist.json
+          path: docs/repolist.json
