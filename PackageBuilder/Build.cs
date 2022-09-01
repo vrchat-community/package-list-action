@@ -68,13 +68,17 @@ class Build : NukeBuild
     Target BuildRepoListing => _ => _
         .Executes( async () =>
         {
-            var repoList = new VRCRepoList(new List<IVRCPackage>())
+            var repoList = new VRCRepoList()
             {
                 author = "VRChat",
                 name = "Test List",
                 url = "https://TBD",
+                Versions = new Dictionary<string, IVRCPackageVersionList>()
+                {
+                    {CurrentPackageName, new VRCPackageVersionList()}
+                }
             };
-
+            
             var repoName = GitHubActions.Repository.Replace($"{GitHubActions.RepositoryOwner}/", "");
             var releases = await Client.Repository.Release.GetAll(GitHubActions.RepositoryOwner, repoName);
             foreach (var release in releases)
