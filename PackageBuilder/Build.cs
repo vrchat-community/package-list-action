@@ -137,8 +137,8 @@ class Build : NukeBuild
             var release = await Client.Repository.Release.GetLatest(GitHubActions.RepositoryOwner, repoName);
             
             // Assumes we're publishing both zip and unitypackage
-            var zipUrl = release.Assets.First(asset => asset.Name.EndsWith(".zip"));
-            var unityPackageUrl = release.Assets.First(asset => asset.Name.EndsWith(".unitypackage"));
+            var zipUrl = release.Assets.First(asset => asset.Name.EndsWith(".zip")).BrowserDownloadUrl;
+            var unityPackageUrl = release.Assets.First(asset => asset.Name.EndsWith(".unitypackage")).BrowserDownloadUrl;
             
             var indexPath = ListPublishDirectory / "index.html";
             string indexTemplateContent = File.ReadAllText(indexPath);
