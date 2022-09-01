@@ -105,11 +105,7 @@ class Build : NukeBuild
             {
                 author = "VRChat",
                 name = "Test List",
-                url = "https://TBD",
-                Versions = new Dictionary<string, IVRCPackageVersionList>()
-                {
-                    {CurrentPackageName, new VRCPackageVersionList()}
-                }
+                url = "https://TBD"
             };
             
             Serilog.Log.Information($"Made RepoList:\n {0}", repoList.ToString());
