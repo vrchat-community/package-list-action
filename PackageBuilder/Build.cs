@@ -110,7 +110,10 @@ class Build : NukeBuild
                 url = "https://TBD"
             };
 
-            repoList.Save(ListPublishDirectory/"repolist.json");
+            string savePath = ListPublishDirectory / "repolist.json";
+            
+            FileSystemTasks.EnsureExistingParentDirectory(savePath);
+            repoList.Save(savePath);
         })
         .Produces(ListPublishDirectory/"repolist.json")
     ;
