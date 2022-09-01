@@ -7,10 +7,6 @@ outputs:
 runs:
   using: "composite"
   steps:
-    
-    - name: List Action Path
-      run: ls $GITHUB_ACTION_PATH
-      shell: bash
       
     - name: Cache .nuke/temp, ~/.nuget/packages
       uses: actions/cache@v2
@@ -21,5 +17,5 @@ runs:
         key: ${{ runner.os }}-${{ hashFiles('**/global.json', '**/*.csproj') }}
         
     - id: foo
-      run: $GITHUB_ACTION_PATH/build.cmd ConfigurePackageVersion
+      run: $GITHUB_ACTION_PATH/build.cmd ConfigurePackageVersion --root $GITHUB_ACTION_PATH
       shell: bash
