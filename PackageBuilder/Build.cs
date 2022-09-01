@@ -21,13 +21,13 @@ class Build : NukeBuild
     private const string PackageVersionProperty = "version";
     private string CurrentPackageVersion;
 
-    [Parameter("Path to Packages Directory")] private AbsolutePath PackagesDir = RootDirectory / "Packages";
-    [Parameter("Package ID")] private string PackageId = "com.vrchat.demo-template";
+    [Parameter("Path to Target Package")] private string TargetPackagePath;
     
     Target ConfigurePackageVersion => _ => _
         .Executes(() =>
         {
-            var manifestFile = PackagesDir / PackageId / PackageManifestFilename;
+            Serilog.Log.Information($"TargetPackagePath is {TargetPackagePath}");
+            var manifestFile = (AbsolutePath)TargetPackagePath / PackageManifestFilename;
             var jManifest = JObject.Parse(File.ReadAllText(manifestFile));
             CurrentPackageVersion = jManifest.Value<string>(PackageVersionProperty);
             if (string.IsNullOrWhiteSpace(CurrentPackageVersion))

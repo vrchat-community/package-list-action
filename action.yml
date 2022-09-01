@@ -1,5 +1,10 @@
 name: "Print Package Version"
 description: "Prints the version of the package specified"
+inputs:
+  targetPackagePath:
+    description: "Directory with the Package you want to Build"
+    required: true
+    default: "Packages/your.package.name"
 outputs:
   version:
     description: "Package Version"
@@ -17,5 +22,5 @@ runs:
         key: ${{ runner.os }}-${{ hashFiles('**/global.json', '**/*.csproj') }}
         
     - id: foo
-      run: $GITHUB_ACTION_PATH/build.cmd ConfigurePackageVersion --root $GITHUB_ACTION_PATH
+      run: $GITHUB_ACTION_PATH/build.cmd ConfigurePackageVersion --targetPackagePath ${{inputs.targetPackagePath}} --root $GITHUB_ACTION_PATH
       shell: bash
