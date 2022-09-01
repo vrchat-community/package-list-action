@@ -10,6 +10,7 @@ using Octokit;
     "GHTest",
     GitHubActionsImage.UbuntuLatest,
     On = new[] { GitHubActionsTrigger.WorkflowDispatch },
+    EnableGitHubToken = true,
     InvokedTargets = new[] { nameof(ConfigurePackageVersion) })]
 class Build : NukeBuild
 {
@@ -62,6 +63,10 @@ class Build : NukeBuild
             foreach (var release in result)
             {
                 Serilog.Log.Information($"Found Release id:{release.Id} name:{release.Name} tagName:{release.TagName}");
+                foreach (var asset in release.Assets)
+                {
+                    Serilog.Log.Information($"Found asset name: {asset.Name} url: {asset.Url} browserurl: {asset.BrowserDownloadUrl}");
+                }
             }
         });
 }
