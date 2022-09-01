@@ -131,12 +131,19 @@ class Build : NukeBuild
         .Triggers(RebuildHomePage);
 
     Target RebuildHomePage => _ => _
-        .Executes(() =>
+        .Executes(async () =>
         {
+            var repoName = GitHubActions.Repository.Replace($"{GitHubActions.RepositoryOwner}/", "");
+            var release = await Client.Repository.Release.GetLatest(GitHubActions.RepositoryOwner, repoName);
+            
+            // Assumes we're publishing both zip and unitypackage
+            var zipUrl = release.Assets.First(asset => asset.Name.EndsWith(".zip"));
+            var unityPackageUrl = release.Assets.First(asset => asset.Name.EndsWith(".unitypackage"));
+            
             var indexPath = ListPublishDirectory / "index.html";
             string indexTemplateContent = File.ReadAllText(indexPath);
             var manifest = VRCPackageManifest.FromJson(GetManifestContents());
-            var rendered = Scriban.Template.Parse(indexTemplateContent).Render(new {manifest}, member => member.Name);
+            var rendered = Scriban.Template.Parse(indexTemplateContent).Render(new {manifest, assets=new{zip=zipUrl, unityPackage=unityPackageUrl}}, member => member.Name);
             File.WriteAllText(indexPath, rendered);
             Serilog.Log.Information($"Updated index page at {indexPath}");
         });
