@@ -1,6 +1,9 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Nuke.Common;
 using Nuke.Common.CI.GitHubActions;
@@ -25,6 +28,10 @@ class Build : NukeBuild
     private const string PackageManifestFilename = "package.json";
     private const string PackageVersionProperty = "version";
     private string CurrentPackageVersion;
+    private const string VRCAgent = "VCCBootstrap 1.0";
+    
+    [Parameter("PackageName")]
+    private string CurrentPackageName;
 
     [Parameter("Path to Target Package")] private string TargetPackagePath;
     
@@ -56,20 +63,46 @@ class Build : NukeBuild
     }
     private GitHubClient _client;
 
+    // Assumes single package in this type of listing, make a different one for multi-package sets
     Target BuildRepoListing => _ => _
         .Executes( async () =>
         {
-            var repoName = GitHubActions.Repository.Replace($"{GitHubActions.RepositoryOwner}/", "");
-            var result = await Client.Repository.Release.GetAll(GitHubActions.RepositoryOwner, repoName);
-            foreach (var release in result)
+            JObject repoList = new JObject()
             {
-                var manifests = release.Assets.Where(asset => asset.Name.CompareTo(PackageManifestFilename) == 0)
-                    .Select(asset => new { asset.Name, asset.BrowserDownloadUrl });
-               
-                foreach (var manifest in manifests)
-                {
-                    Serilog.Log.Information($"Found manifest name: {manifest.Name} url: {manifest.BrowserDownloadUrl}");
+                {"name", "MyRepoName"},
+                {"author", "developer@vrchat.com"},
+                {"url", "https://urlParameter"},
+                {"packages", new JObject()
+                    {
+                        CurrentPackageName, new JObject()
+                        {
+                            "versions", new JObject()
+                        }
+                    }
                 }
+            };
+
+            var repoName = GitHubActions.Repository.Replace($"{GitHubActions.RepositoryOwner}/", "");
+            var releases = await Client.Repository.Release.GetAll(GitHubActions.RepositoryOwner, repoName);
+            foreach (var release in releases)
+            {
+                var manifestUrl = release.Assets.First(asset => asset.Name.CompareTo(PackageManifestFilename) == 0)
+                    .BrowserDownloadUrl;
+                
+                // Add latest package version
+                ((JObject)repoList["versions"])?.Add(release.TagName, await GetRemoteString(manifestUrl));
             }
+            
+            Serilog.Log.Information($"Made RepoList:\n {0}", repoList.ToString(Formatting.Indented));
         });
+    
+    public static async Task<string> GetRemoteString(string url)
+    {
+        using (var client = new WebClient())
+        {
+            // Add User Agent or else CloudFlare will return 1020
+            client.Headers.Add(HttpRequestHeader.UserAgent, VRCAgent);
+            return await client.DownloadStringTaskAsync(url);
+        }
+    }
 }
