@@ -34,6 +34,13 @@ class Build : NukeBuild
     private string CurrentPackageVersion;
     private const string VRCAgent = "VCCBootstrap/1.0";
 
+    [Parameter("Name of Listing Author")]
+    private readonly string ListAuthorName = "VRChat";
+    [Parameter("Name of Listing")]
+    private readonly string ListName = "Example Listing";
+    [Parameter("URL to published Listing")] // Todo: generate this automatically from repo info
+    private readonly string ListURL = "https://momo-the-monster.github.io/package-list-action/index.json";
+
     private AbsolutePath ListPublishDirectory = RootDirectory / "docs";
     
     [Parameter("PackageName")]
@@ -106,17 +113,16 @@ class Build : NukeBuild
             
             var repoList = new VRCRepoList(packages)
             {
-                author = "VRChat",
-                name = "Test List",
-                url = "https://TBD"
+                author = ListAuthorName,
+                name = ListName,
+                url = ListURL
             };
 
-            string savePath = ListPublishDirectory / "repolist.json";
+            string savePath = ListPublishDirectory / "index.json";
             
             FileSystemTasks.EnsureExistingParentDirectory(savePath);
             repoList.Save(savePath);
         })
-        .Produces(ListPublishDirectory/"repolist.json")
     ;
 
     static HttpClient _http;
