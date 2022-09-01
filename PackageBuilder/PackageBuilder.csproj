@@ -12,6 +12,19 @@
 
   <ItemGroup>
     <PackageReference Include="Nuke.Common" Version="6.2.1" />
+    <PackageReference Include="SemanticVersioning" Version="2.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\vpm-core-lib\vpm-core-lib.dll">
+      <Link>vpm-core-lib.dll</Link>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="vpm-core-lib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>..\vpm-core-lib\vpm-core-lib.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

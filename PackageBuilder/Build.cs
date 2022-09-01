@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -9,6 +10,7 @@ using Nuke.Common;
 using Nuke.Common.CI.GitHubActions;
 using Nuke.Common.IO;
 using Octokit;
+using VRC.PackageManagement.Core.Types.Packages;
 
 [GitHubActions(
     "GHTest",
@@ -67,19 +69,11 @@ class Build : NukeBuild
     Target BuildRepoListing => _ => _
         .Executes( async () =>
         {
-            JObject repoList = new JObject()
+            var repoList = new VRCRepoList(new List<IVRCPackage>())
             {
-                {"name", "MyRepoName"},
-                {"author", "developer@vrchat.com"},
-                {"url", "https://urlParameter"},
-                {"packages", new JObject()
-                    {
-                        CurrentPackageName, new JObject()
-                        {
-                            "versions", new JObject()
-                        }
-                    }
-                }
+                author = "VRChat",
+                name = "Test List",
+                url = "https://TBD",
             };
 
             var repoName = GitHubActions.Repository.Replace($"{GitHubActions.RepositoryOwner}/", "");
@@ -90,10 +84,10 @@ class Build : NukeBuild
                     .BrowserDownloadUrl;
                 
                 // Add latest package version
-                ((JObject)repoList["versions"])?.Add(release.TagName, await GetRemoteString(manifestUrl));
+                repoList.Versions[CurrentPackageName].Versions.Add(release.TagName, VRCPackageManifest.FromJson(await GetRemoteString(manifestUrl)));
             }
             
-            Serilog.Log.Information($"Made RepoList:\n {0}", repoList.ToString(Formatting.Indented));
+            Serilog.Log.Information($"Made RepoList:\n {0}", repoList.ToString());
         });
     
     public static async Task<string> GetRemoteString(string url)
