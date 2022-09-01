@@ -18,6 +18,7 @@ using ProductHeaderValue = Octokit.ProductHeaderValue;
     GitHubActionsImage.UbuntuLatest,
     On = new[] { GitHubActionsTrigger.WorkflowDispatch, GitHubActionsTrigger.Push },
     EnableGitHubToken = true,
+    AutoGenerate = false,
     InvokedTargets = new[] { nameof(BuildRepoListing) })]
 class Build : NukeBuild
 {
