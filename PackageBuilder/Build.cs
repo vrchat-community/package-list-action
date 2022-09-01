@@ -136,8 +136,9 @@ class Build : NukeBuild
             var indexPath = ListPublishDirectory / "index.html";
             string indexTemplateContent = File.ReadAllText(indexPath);
             var manifest = VRCPackageManifest.FromJson(GetManifestContents());
-            var rendered = Scriban.Template.Parse(indexTemplateContent).Render(new {manifest=manifest}, member => member.Name);
+            var rendered = Scriban.Template.Parse(indexTemplateContent).Render(new {manifest}, member => member.Name);
             File.WriteAllText(indexPath, rendered);
+            Serilog.Log.Information($"Updated index page at {indexPath}");
         });
 
     static HttpClient _http;
