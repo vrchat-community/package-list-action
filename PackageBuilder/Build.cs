@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Nuke.Common;
 using Nuke.Common.CI.GitHubActions;
@@ -107,8 +108,9 @@ class Build : NukeBuild
                 name = "Test List",
                 url = "https://TBD"
             };
-            
-            Serilog.Log.Information($"Made RepoList:\n {repoList}");
+
+            var repoListJson = JsonConvert.SerializeObject(repoList);
+            Serilog.Log.Information($"Made RepoList:\n {repoListJson}");
         });
 
     static HttpClient _http;
