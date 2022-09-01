@@ -68,7 +68,19 @@ class Build : NukeBuild
     Target BuildRepoListing => _ => _
         .Executes( async () =>
         {
-            var repoList = new VRCRepoList()
+            var packages = new List<IVRCPackage>();
+            var repoName = GitHubActions.Repository.Replace($"{GitHubActions.RepositoryOwner}/", "");
+            var releases = await Client.Repository.Release.GetAll(GitHubActions.RepositoryOwner, repoName);
+            foreach (var release in releases)
+            {
+                var manifestUrl = release.Assets.First(asset => asset.Name.CompareTo(PackageManifestFilename) == 0)
+                    .BrowserDownloadUrl;
+                
+                // Add latest package version
+                packages.Add(VRCPackageManifest.FromJson(await GetRemoteString(manifestUrl))
+            }
+            
+            var repoList = new VRCRepoList(packages)
             {
                 author = "VRChat",
                 name = "Test List",
@@ -78,17 +90,6 @@ class Build : NukeBuild
                     {CurrentPackageName, new VRCPackageVersionList()}
                 }
             };
-            
-            var repoName = GitHubActions.Repository.Replace($"{GitHubActions.RepositoryOwner}/", "");
-            var releases = await Client.Repository.Release.GetAll(GitHubActions.RepositoryOwner, repoName);
-            foreach (var release in releases)
-            {
-                var manifestUrl = release.Assets.First(asset => asset.Name.CompareTo(PackageManifestFilename) == 0)
-                    .BrowserDownloadUrl;
-                
-                // Add latest package version
-                repoList.Versions[CurrentPackageName].Versions.Add(release.TagName, VRCPackageManifest.FromJson(await GetRemoteString(manifestUrl)));
-            }
             
             Serilog.Log.Information($"Made RepoList:\n {0}", repoList.ToString());
         });
