@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 using Nuke.Common;
 using Nuke.Common.CI.GitHubActions;
@@ -62,10 +63,12 @@ class Build : NukeBuild
             var result = await Client.Repository.Release.GetAll(GitHubActions.RepositoryOwner, repoName);
             foreach (var release in result)
             {
-                Serilog.Log.Information($"Found Release id:{release.Id} name:{release.Name} tagName:{release.TagName}");
-                foreach (var asset in release.Assets)
+                var manifests = release.Assets.Where(asset => asset.Name.CompareTo(PackageManifestFilename) == 0)
+                    .Select(asset => new { asset.Name, asset.BrowserDownloadUrl });
+               
+                foreach (var manifest in manifests)
                 {
-                    Serilog.Log.Information($"Found asset name: {asset.Name} url: {asset.Url} browserurl: {asset.BrowserDownloadUrl}");
+                    Serilog.Log.Information($"Found manifest name: {manifest.Name} url: {manifest.BrowserDownloadUrl}");
                 }
             }
         });
