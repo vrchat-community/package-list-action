@@ -77,7 +77,7 @@ class Build : NukeBuild
                     .BrowserDownloadUrl;
                 
                 // Add latest package version
-                packages.Add(VRCPackageManifest.FromJson(await GetRemoteString(manifestUrl))
+                packages.Add(VRCPackageManifest.FromJson(await GetRemoteString(manifestUrl)));
             }
             
             var repoList = new VRCRepoList(packages)
