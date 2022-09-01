@@ -7,13 +7,9 @@ outputs:
 runs:
   using: "composite"
   steps:
-  
-    - name: List Root
-      run: ls /
-      shell: bash
-      
-    - name: List Local
-      run: ls ./
+    
+    - name: List Action Path
+      run: ls $GITHUB_ACTION_PATH
       shell: bash
       
     - name: Cache .nuke/temp, ~/.nuget/packages
