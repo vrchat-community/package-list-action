@@ -47,14 +47,6 @@
           "type": "boolean",
           "description": "Disables displaying the NUKE logo"
         },
-        "PackageId": {
-          "type": "string",
-          "description": "Package ID"
-        },
-        "PackagesDir": {
-          "type": "string",
-          "description": "Path to Packages Directory"
-        },
         "Partition": {
           "type": "string",
           "description": "Partition to use on CI"
@@ -80,6 +72,7 @@
           "items": {
             "type": "string",
             "enum": [
+              "BuildRepoListing",
               "ConfigurePackageVersion"
             ]
           }
@@ -90,9 +83,14 @@
           "items": {
             "type": "string",
             "enum": [
+              "BuildRepoListing",
               "ConfigurePackageVersion"
             ]
           }
+        },
+        "TargetPackagePath": {
+          "type": "string",
+          "description": "Path to Target Package"
         },
         "Verbosity": {
           "type": "string",

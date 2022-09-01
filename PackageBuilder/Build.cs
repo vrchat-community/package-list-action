@@ -4,6 +4,7 @@ using Newtonsoft.Json.Linq;
 using Nuke.Common;
 using Nuke.Common.CI.GitHubActions;
 using Nuke.Common.IO;
+using Octokit;
 
 [GitHubActions(
     "GHTest",
@@ -12,10 +13,12 @@ using Nuke.Common.IO;
     InvokedTargets = new[] { nameof(ConfigurePackageVersion) })]
 class Build : NukeBuild
 {
-    public static int Main () => Execute<Build>(x => x.ConfigurePackageVersion);
+    public static int Main () => Execute<Build>(x => x.BuildRepoListing);
 
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
     readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
+    
+    GitHubActions GitHubActions => GitHubActions.Instance;
 
     private const string PackageManifestFilename = "package.json";
     private const string PackageVersionProperty = "version";
@@ -35,5 +38,30 @@ class Build : NukeBuild
                 throw new Exception($"Could not find Package Version in {manifestFile.Name}");
             }
             Serilog.Log.Information($"Found version {CurrentPackageVersion} for {manifestFile}");
+        });
+    
+    protected GitHubClient Client
+    {
+        get
+        {
+            if (_client == null)
+            {
+                _client = new GitHubClient(new ProductHeaderValue("VCC-Nuke"),
+                    new Octokit.Internal.InMemoryCredentialStore(new Credentials(GitHubActions.Token)));
+            }
+            return _client;
+        }
+    }
+    private GitHubClient _client;
+
+    Target BuildRepoListing => _ => _
+        .Executes( async () =>
+        {
+            var repoName = GitHubActions.Repository.Replace($"{GitHubActions.RepositoryOwner}/", "");
+            var result = await Client.Repository.Release.GetAll(GitHubActions.RepositoryOwner, repoName);
+            foreach (var release in result)
+            {
+                Serilog.Log.Information($"Found Release id:{release.Id} name:{release.Name} tagName:{release.TagName}");
+            }
         });
 }
