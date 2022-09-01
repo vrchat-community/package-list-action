@@ -16,7 +16,7 @@
 
 name: GHTest
 
-on: [workflow_dispatch]
+on: [push,workflow_dispatch]
 
 jobs:
   ubuntu-latest:
@@ -31,7 +31,7 @@ jobs:
             .nuke/temp
             ~/.nuget/packages
           key: ${{ runner.os }}-${{ hashFiles('**/global.json', '**/*.csproj') }}
-      - name: Run './build.cmd ConfigurePackageVersion'
-        run: ./build.cmd ConfigurePackageVersion
+      - name: Run BuildRepoListing
+        run: ./build.cmd BuildRepoListing
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

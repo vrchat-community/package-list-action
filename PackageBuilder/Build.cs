@@ -31,7 +31,7 @@ class Build : NukeBuild
     private const string PackageManifestFilename = "package.json";
     private const string PackageVersionProperty = "version";
     private string CurrentPackageVersion;
-    private const string VRCAgent = "VCCBootstrap 1.0";
+    private const string VRCAgent = "VCCBootstrap-1.0";
     
     [Parameter("PackageName")]
     private string CurrentPackageName = "com.vrchat.demo-template";
