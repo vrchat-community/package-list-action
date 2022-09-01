@@ -88,7 +88,11 @@ class Build : NukeBuild
                     if (result.IsSuccessStatusCode)
                     {
                         // Add latest package version
-                        packages.Add(VRCPackageManifest.FromJson(await result.Content.ReadAsStringAsync()));
+                        var manifesString = await result.Content.ReadAsStringAsync();
+                        Serilog.Log.Information($"Downloaded manifest: {manifesString}");
+                        var item = VRCPackageManifest.FromJson(manifesString);
+                        Serilog.Log.Information($"Made {item} with {item.Id} and versions: {item.version}");
+                        packages.Add(item);
                     }
                     else
                     {
