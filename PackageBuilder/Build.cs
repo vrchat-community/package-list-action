@@ -103,12 +103,21 @@ class Build : NukeBuild
                 manifest.url = zipAsset.BrowserDownloadUrl;
                 packages.Add(manifest);
             }
+            
+            var latestRelease = await Client.Repository.Release.GetLatest(GitHubActions.RepositoryOwner, repoName);
+            
+            // Assumes we're publishing both zip and unitypackage
+            var latestManifest = await GetManifestFromRelease(latestRelease);
+            if (latestRelease == null)
+            {
+                throw new Exception($"Could not get Manifest for release {latestRelease.Name}");
+            }
 
             var repoList = new VRCRepoList(packages)
             {
-                author = ListAuthorName,
-                name = ListName,
-                url = ListURL
+                author = latestManifest.author.name,
+                name = $"{latestManifest.name} Releases",
+                url = $"https://{GitHubActions.RepositoryOwner}.github.io/{repoName}/index.json"
             };
 
             string savePath = ListPublishDirectory / "index.json";
