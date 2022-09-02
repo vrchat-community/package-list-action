@@ -29,16 +29,9 @@ class Build : NukeBuild
     GitHubActions GitHubActions => GitHubActions.Instance;
 
     const string PackageManifestFilename = "package.json";
-    const string PackageVersionProperty = "version";
     string CurrentPackageVersion;
     const string VRCAgent = "VCCBootstrap/1.0";
 
-    [Parameter("Name of Listing Author")]
-    readonly string ListAuthorName = "VRChat";
-    [Parameter("Name of Listing")]
-    readonly string ListName = "Example Listing";
-    [Parameter("URL to published Listing")] // Todo: generate this automatically from repo info
-    readonly string ListURL = "https://momo-the-monster.github.io/package-list-action/index.json";
     [Parameter("Directory to save index into")]
     AbsolutePath ListPublishDirectory = RootDirectory / "docs";
     
@@ -46,12 +39,6 @@ class Build : NukeBuild
     private string CurrentPackageName = "com.vrchat.demo-template";
 
     [Parameter("Path to Target Package")] private string TargetPackagePath => RootDirectory / "Packages"  / CurrentPackageName;
-
-    private string GetManifestContents()
-    {
-        var manifestFile = (AbsolutePath)TargetPackagePath / PackageManifestFilename;
-        return File.ReadAllText(manifestFile);
-    }
     
     protected GitHubClient Client
     {
