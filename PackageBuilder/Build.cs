@@ -5,7 +5,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 using Nuke.Common;
 using Nuke.Common.CI.GitHubActions;
 using Nuke.Common.IO;
@@ -47,18 +46,6 @@ class Build : NukeBuild
     private string CurrentPackageName = "com.vrchat.demo-template";
 
     [Parameter("Path to Target Package")] private string TargetPackagePath => RootDirectory / "Packages"  / CurrentPackageName;
-    
-    Target ConfigurePackageVersion => _ => _
-        .Executes(() =>
-        {
-            var jManifest = JObject.Parse(GetManifestContents());
-            CurrentPackageVersion = jManifest.Value<string>(PackageVersionProperty);
-            if (string.IsNullOrWhiteSpace(CurrentPackageVersion))
-            {
-                throw new Exception($"Could not find Package Version in manifest");
-            }
-            Serilog.Log.Information($"Found version {CurrentPackageVersion}");
-        });
 
     private string GetManifestContents()
     {
