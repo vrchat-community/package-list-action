@@ -82,11 +82,12 @@ class Build : NukeBuild
             
             // Assumes we're publishing both zip and unitypackage
             var latestManifest = await GetManifestFromRelease(latestRelease);
-            if (latestRelease == null)
+            if (latestManifest == null)
             {
                 throw new Exception($"Could not get Manifest for release {latestRelease.Name}");
             }
 
+            Serilog.Log.Warning($"Latest manifest? {latestManifest != null}, name: {latestManifest.name}, author: {latestManifest.author}");
             var repoList = new VRCRepoList(packages)
             {
                 author = latestManifest.author?.name ?? GitHubActions.RepositoryOwner,
