@@ -89,7 +89,7 @@ class Build : NukeBuild
 
             var repoList = new VRCRepoList(packages)
             {
-                author = latestManifest.author.name,
+                author = latestManifest.author?.name ?? GitHubActions.RepositoryOwner,
                 name = $"{latestManifest.name} Releases",
                 url = $"https://{GitHubActions.RepositoryOwner}.github.io/{repoName}/index.json"
             };
