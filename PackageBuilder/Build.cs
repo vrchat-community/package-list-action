@@ -90,7 +90,7 @@ class Build : NukeBuild
             Serilog.Log.Warning($"Latest manifest? {latestManifest != null}, name: {latestManifest.name}, author: {latestManifest.author}");
             var repoList = new VRCRepoList(packages)
             {
-                author = latestManifest.author?.name ?? GitHubActions.RepositoryOwner,
+                author = latestManifest?.author?.name ?? GitHubActions.RepositoryOwner,
                 name = $"{latestManifest.name} Releases",
                 url = $"https://{GitHubActions.RepositoryOwner}.github.io/{repoName}/index.json"
             };
