@@ -82,14 +82,14 @@ class Build : NukeBuild
             
             // Assumes we're publishing both zip and unitypackage
             var latestManifest = await GetManifestFromRelease(latestRelease);
-            if (latestRelease == null)
+            if (latestManifest == null)
             {
                 throw new Exception($"Could not get Manifest for release {latestRelease.Name}");
             }
 
             var repoList = new VRCRepoList(packages)
             {
-                author = latestManifest.author.name,
+                author = latestManifest.author?.name ?? GitHubActions.RepositoryOwner,
                 name = $"{latestManifest.name} Releases",
                 url = $"https://{GitHubActions.RepositoryOwner}.github.io/{repoName}/index.json"
             };
@@ -148,6 +148,14 @@ class Build : NukeBuild
             }
             var indexPath = ListPublishDirectory / "index.html";
             string indexTemplateContent = File.ReadAllText(indexPath);
+            
+            if (manifest.author == null) {
+                manifest.author = new VRC.PackageManagement.Core.Types.Packages.Author{
+                    name = GitHubActions.RepositoryOwner,
+                    url = $"https://github.com/{GitHubActions.RepositoryOwner}"
+                };
+            }
+
             var rendered = Scriban.Template.Parse(indexTemplateContent).Render(new {manifest, assets=new{zip=zipUrl, unityPackage=unityPackageUrl}}, member => member.Name);
             File.WriteAllText(indexPath, rendered);
             Serilog.Log.Information($"Updated index page at {indexPath}");
