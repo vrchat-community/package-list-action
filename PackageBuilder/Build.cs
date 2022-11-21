@@ -29,6 +29,7 @@ class Build : NukeBuild
     GitHubActions GitHubActions => GitHubActions.Instance;
 
     const string PackageManifestFilename = "package.json";
+    const string WebPageIndexFilename = "index.html";
     string CurrentPackageVersion;
     const string VRCAgent = "VCCBootstrap/1.0";
 
@@ -38,7 +39,8 @@ class Build : NukeBuild
     [Parameter("PackageName")]
     private string CurrentPackageName = "com.vrchat.demo-template";
 
-    [Parameter("Path to Target Package")] private string TargetPackagePath => RootDirectory / "Packages"  / CurrentPackageName;
+    // assumes that "template-package" repo is checked out in sibling dir to this repo, can be overridden
+    [Parameter("Path to Target Package")] private AbsolutePath LocalTestPackagesPath => RootDirectory.Parent / "template-package"  / "Packages";
     
     protected GitHubClient Client
     {
@@ -54,13 +56,82 @@ class Build : NukeBuild
     }
     private GitHubClient _client;
 
+    #region Local Package Methods
+
+    private IReadOnlyList<Release> GetLocalReleases(string repoName)
+    {
+        return new List<Release>() { GetLocalRelease(repoName) };
+    }
+
+    private Release GetLocalRelease(string packageName)
+    {
+        // Fills in most fields with the name of the field, we only need the URL for our purposes
+        return new Release("url", "htmlUrl", "assetsUrl", "uploadUrl", 0,
+            "nodeId", "tagName", "targetCommitish", "name", "body",
+            false, false, DateTimeOffset.Now, DateTimeOffset.Now, new Octokit.Author(),
+            "tarballUrl", "zipballUrl", 
+            new[]
+            {
+                GetLocalReleaseAsset(LocalTestPackagesPath / packageName, "package.json"),
+                GetLocalReleaseAsset(LocalTestPackagesPath / packageName,"package.zip"),
+                GetLocalReleaseAsset(LocalTestPackagesPath / packageName,"package.unitypackage")
+            });
+    }
+    private ReleaseAsset GetLocalReleaseAsset(string path, string filename)
+    {
+        // Fills in most fields with the name of the field, we only need the URL for our purposes
+        return new ReleaseAsset(  Path.Combine(path, filename), 0, "nodeId", filename, "label", "state", 
+            "contentType", 0, 0, DateTimeOffset.Now, DateTimeOffset.Now, 
+            $"https://local-test-wont-work/{filename}", new Octokit.Author());
+    }
+
+    #endregion
+
+    #region Methods wrapped for GitHub / Local Parity
+
+    private async Task<Release> GetLatestRelease(string repoName)
+    {
+        if (IsServerBuild)
+        {
+            return await Client.Repository.Release.GetLatest(GitHubActions.RepositoryOwner, repoName);
+        }
+        else
+        {
+            return GetLocalRelease(repoName); // assumes we just have a single release available locally, for now.
+        }
+    }
+
+    private string GetRepoName()
+    {
+        return IsServerBuild
+            ? GitHubActions.Repository.Replace($"{GitHubActions.RepositoryOwner}/", "")
+            : CurrentPackageName;
+    }
+
+    private string GetRepoOwner()
+    {
+        return IsServerBuild ? GitHubActions.RepositoryOwner : "LocalTestOwner";
+    }
+    
+    // On GitHub, we're running in the target package's repo. Locally, we run in the action dir.
+    AbsolutePath ListSourceDirectory =>
+        IsServerBuild ? ListPublishDirectory : LocalTestPackagesPath.Parent / "Website"; 
+
+    #endregion
+
     // Assumes single package in this type of listing, make a different one for multi-package sets
     Target BuildRepoListing => _ => _
         .Executes(async () =>
         {
             var packages = new List<IVRCPackage>();
-            var repoName = GitHubActions.Repository.Replace($"{GitHubActions.RepositoryOwner}/", "");
-            var releases = await Client.Repository.Release.GetAll(GitHubActions.RepositoryOwner, repoName);
+
+            var repoName = GetRepoName();
+            var repoOwner = GetRepoOwner();
+
+            var releases = IsServerBuild
+                ? await Client.Repository.Release.GetAll(GitHubActions.RepositoryOwner, repoName)
+                : GetLocalReleases(repoName);
+            
             foreach (var release in releases)
             {
                 // Release must have package.json and .zip file, or else it will throw an exception here
@@ -77,8 +148,8 @@ class Build : NukeBuild
                 manifest.url = zipAsset.BrowserDownloadUrl;
                 packages.Add(manifest);
             }
-            
-            var latestRelease = await Client.Repository.Release.GetLatest(GitHubActions.RepositoryOwner, repoName);
+
+            var latestRelease = await GetLatestRelease(repoName);
             
             // Assumes we're publishing both zip and unitypackage
             var latestManifest = await GetManifestFromRelease(latestRelease);
@@ -89,9 +160,9 @@ class Build : NukeBuild
 
             var repoList = new VRCRepoList(packages)
             {
-                author = latestManifest.author?.name ?? GitHubActions.RepositoryOwner,
+                author = latestManifest.author?.name ?? repoOwner,
                 name = $"{latestManifest.name} Releases",
-                url = $"https://{GitHubActions.RepositoryOwner}.github.io/{repoName}/index.json"
+                url = $"https://{repoOwner}.github.io/{repoName}/index.json"
             };
 
             string savePath = ListPublishDirectory / "index.json";
@@ -114,29 +185,44 @@ class Build : NukeBuild
         }
     }
 
-    async Task<VRCPackageManifest> GetManifestFromRelease(Release release)
+    async Task<string> GetAuthenticatedString(string url)
     {
-        // Release must have package.json and .zip file, or else it will throw an exception here
-        ReleaseAsset manifestAsset =
-            release.Assets.First(asset => asset.Name.CompareTo(PackageManifestFilename) == 0);
-
-        var result = await GetAuthenticatedResponse(manifestAsset.Url);
-        if (result.IsSuccessStatusCode)
+        if (IsServerBuild)
         {
-            return VRCPackageManifest.FromJson(await result.Content.ReadAsStringAsync());
+            var result = await GetAuthenticatedResponse(url);
+            if (result.IsSuccessStatusCode)
+            { 
+                return await result.Content.ReadAsStringAsync();
+            }
+            else
+            {
+                Serilog.Log.Error($"Could not download manifest from {url}");
+                return null;
+            }
         }
         else
         {
-            Serilog.Log.Error($"Could not download manifest from {manifestAsset.Url}");
-            return null;
+            // Treat like absolute path for local files
+            return File.ReadAllText(url);
         }
+    }
+
+    async Task<VRCPackageManifest> GetManifestFromRelease(Release release)
+    {
+        // Release must have package.json or else it will throw an exception here
+        ReleaseAsset manifestAsset =
+            release.Assets.First(asset => asset.Name.CompareTo(PackageManifestFilename) == 0);
+
+        // Will log an error if it fails, stopping the automation
+        return VRCPackageManifest.FromJson( await GetAuthenticatedString(manifestAsset.Url));
     }
 
     Target RebuildHomePage => _ => _
         .Executes(async () =>
         {
-            var repoName = GitHubActions.Repository.Replace($"{GitHubActions.RepositoryOwner}/", "");
-            var release = await Client.Repository.Release.GetLatest(GitHubActions.RepositoryOwner, repoName);
+            var repoName = GetRepoName();
+            var repoOwner = GetRepoOwner();
+            var release = await GetLatestRelease(repoName);
             
             // Assumes we're publishing both zip and unitypackage
             var zipUrl = release.Assets.First(asset => asset.Name.EndsWith(".zip")).BrowserDownloadUrl;
@@ -146,19 +232,21 @@ class Build : NukeBuild
             {
                 throw new Exception($"Could not get Manifest for release {release.Name}");
             }
-            var indexPath = ListPublishDirectory / "index.html";
-            string indexTemplateContent = File.ReadAllText(indexPath);
+            
+            var indexReadPath = ListSourceDirectory / WebPageIndexFilename;
+            var indexWritePath = ListPublishDirectory / WebPageIndexFilename;
+            string indexTemplateContent = File.ReadAllText(indexReadPath);
             
             if (manifest.author == null) {
                 manifest.author = new VRC.PackageManagement.Core.Types.Packages.Author{
-                    name = GitHubActions.RepositoryOwner,
-                    url = $"https://github.com/{GitHubActions.RepositoryOwner}"
+                    name = repoOwner,
+                    url = $"https://github.com/{repoOwner}"
                 };
             }
 
             var rendered = Scriban.Template.Parse(indexTemplateContent).Render(new {manifest, assets=new{zip=zipUrl, unityPackage=unityPackageUrl}}, member => member.Name);
-            File.WriteAllText(indexPath, rendered);
-            Serilog.Log.Information($"Updated index page at {indexPath}");
+            File.WriteAllText(indexWritePath, rendered);
+            Serilog.Log.Information($"Updated index page at {indexWritePath}");
         });
 
     static HttpClient _http;

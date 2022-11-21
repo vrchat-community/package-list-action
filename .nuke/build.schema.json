@@ -47,21 +47,13 @@
             "VSCode"
           ]
         },
-        "ListAuthorName": {
-          "type": "string",
-          "description": "Name of Listing Author"
-        },
-        "ListName": {
-          "type": "string",
-          "description": "Name of Listing"
-        },
         "ListPublishDirectory": {
           "type": "string",
           "description": "Directory to save index into"
         },
-        "ListURL": {
+        "LocalTestPackagesPath": {
           "type": "string",
-          "description": "URL to published Listing"
+          "description": "Path to Target Package"
         },
         "NoLogo": {
           "type": "boolean",
@@ -93,7 +85,6 @@
             "type": "string",
             "enum": [
               "BuildRepoListing",
-              "ConfigurePackageVersion",
               "RebuildHomePage"
             ]
           }
@@ -105,14 +96,9 @@
             "type": "string",
             "enum": [
               "BuildRepoListing",
-              "ConfigurePackageVersion",
               "RebuildHomePage"
             ]
           }
-        },
-        "TargetPackagePath": {
-          "type": "string",
-          "description": "Path to Target Package"
         },
         "Verbosity": {
           "type": "string",
