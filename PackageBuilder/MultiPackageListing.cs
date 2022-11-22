@@ -39,7 +39,7 @@ namespace VRC.PackageManagement.Automation
         // assumes that "template-package" repo is checked out in sibling dir to this repo, can be overridden
         [Parameter("Path to Target Listing")] 
         AbsolutePath PackageListingSourcePath => IsServerBuild 
-        ? RootDirectory / PackageListingSourceFilename
+        ? RootDirectory.Parent / PackageListingSourceFilename
         : RootDirectory.Parent / "template-package-listing" / PackageListingSourceFilename;
 
         Target BuildMultiPackageListing => _ => _
