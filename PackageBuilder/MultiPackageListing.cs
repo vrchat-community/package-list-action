@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Linq;
 using Newtonsoft.Json;
 using Nuke.Common;
 using Nuke.Common.IO;
@@ -13,6 +14,8 @@ namespace VRC.PackageManagement.Automation
     {
         private const string PackageListingPublishFilename = "index.json";
         private const string PackageListingSourceFilename = "source.json";
+        private const string WebPageAppFilename = "app.js";
+        private const string WebPageStylesFilename = "styles.css";
         
         // https://www.newtonsoft.com/json/help/html/T_Newtonsoft_Json_JsonSerializerSettings.htm
         public static JsonSerializerSettings JsonWriteOptions = new()
@@ -98,6 +101,49 @@ namespace VRC.PackageManagement.Automation
                 };
                 string savePath = ListPublishDirectory / PackageListingPublishFilename;
                 repoList.Save(savePath);
+
+                var indexReadPath = PackageListingSourcePath.Parent / "Website" / WebPageIndexFilename;
+                var appReadPath = PackageListingSourcePath.Parent / "Website" / WebPageAppFilename;
+                var stylesReadPath = PackageListingSourcePath.Parent / "Website" / WebPageStylesFilename;
+                var indexWritePath = ListPublishDirectory / WebPageIndexFilename;
+                var indexAppWritePath = ListPublishDirectory / WebPageAppFilename;
+                var indexStylesWritePath = ListPublishDirectory / WebPageStylesFilename;
+                string indexTemplateContent = File.ReadAllText(indexReadPath);
+
+                var listingInfo = new {
+                    Name = listSource.name,
+                    Url = listSource.url,
+                    ListingRepoUrl = "" // this should probably point to the github repository
+                };
+                
+                var formattedPackages = packages.ConvertAll(p => new {
+                    Name = p.Id,
+                    Author = new {
+                        Name = listSource.author,
+                        Url = "" // this should probably point at the github/some other url down the line
+                    },
+                    ZipUrl = listSource.packages.Find(release => release.name == p.Id).releases[0].zipUrl,
+                    Type = p.VPMDependencies.ContainsKey("com.vrchat.worlds") ? "World" : "Avatar",
+                    p.Description,
+                    DisplayName = p.Title,
+                    p.Version,
+                    Dependencies = p.VPMDependencies.Select(dep => new {
+                            Name = dep.Key,
+                            Version = dep.Value
+                        }
+                    ).ToList(),
+                });
+
+                var rendered = Scriban.Template.Parse(indexTemplateContent).Render(
+                    new { listingInfo, packages = formattedPackages }, member => member.Name
+                );
+                File.WriteAllText(indexWritePath, rendered);
+                var appJsRendered = Scriban.Template.Parse(File.ReadAllText(appReadPath)).Render(
+                    new { listingInfo, packages = formattedPackages }, member => member.Name
+                );
+                File.WriteAllText(indexAppWritePath, appJsRendered);
+                // Styles are copied over without modifications
+                File.WriteAllText(indexStylesWritePath, File.ReadAllText(stylesReadPath));
                 
                 Serilog.Log.Information($"Saved Listing to {savePath}.");
             });
