@@ -17,6 +17,7 @@ namespace VRC.PackageManagement.Automation
         private const string WebPageAppFilename = "app.js";
         private const string WebPageStylesFilename = "styles.css";
         
+        
         // https://www.newtonsoft.com/json/help/html/T_Newtonsoft_Json_JsonSerializerSettings.htm
         public static JsonSerializerSettings JsonWriteOptions = new()
         {
@@ -41,9 +42,11 @@ namespace VRC.PackageManagement.Automation
         
         // assumes that "template-package" repo is checked out in sibling dir to this repo, can be overridden
         [Parameter("Path to Target Listing")] 
-        AbsolutePath PackageListingSourcePath => IsServerBuild 
+        private static AbsolutePath PackageListingSourcePath => IsServerBuild
         ? RootDirectory.Parent / PackageListingSourceFilename
         : RootDirectory.Parent / "template-package-listing" / PackageListingSourceFilename;
+
+        private static  readonly AbsolutePath WebPageSourcePath = PackageListingSourcePath.Parent / "Website";
 
         Target BuildMultiPackageListing => _ => _
             .Executes(async () =>
@@ -102,12 +105,14 @@ namespace VRC.PackageManagement.Automation
                 string savePath = ListPublishDirectory / PackageListingPublishFilename;
                 repoList.Save(savePath);
 
-                var indexReadPath = PackageListingSourcePath.Parent / "Website" / WebPageIndexFilename;
-                var appReadPath = PackageListingSourcePath.Parent / "Website" / WebPageAppFilename;
-                var stylesReadPath = PackageListingSourcePath.Parent / "Website" / WebPageStylesFilename;
+                var indexReadPath = WebPageSourcePath / WebPageIndexFilename;
+                var appReadPath = WebPageSourcePath / WebPageAppFilename;
+                var stylesReadPath = WebPageSourcePath / WebPageStylesFilename;
+
                 var indexWritePath = ListPublishDirectory / WebPageIndexFilename;
                 var indexAppWritePath = ListPublishDirectory / WebPageAppFilename;
                 var indexStylesWritePath = ListPublishDirectory / WebPageStylesFilename;
+
                 string indexTemplateContent = File.ReadAllText(indexReadPath);
 
                 var listingInfo = new {
@@ -138,6 +143,7 @@ namespace VRC.PackageManagement.Automation
                     new { listingInfo, packages = formattedPackages }, member => member.Name
                 );
                 File.WriteAllText(indexWritePath, rendered);
+
                 var appJsRendered = Scriban.Template.Parse(File.ReadAllText(appReadPath)).Render(
                     new { listingInfo, packages = formattedPackages }, member => member.Name
                 );
