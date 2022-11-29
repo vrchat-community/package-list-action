@@ -16,8 +16,7 @@ namespace VRC.PackageManagement.Automation
         private const string PackageListingSourceFilename = "source.json";
         private const string WebPageAppFilename = "app.js";
         private const string WebPageStylesFilename = "styles.css";
-        
-        
+
         // https://www.newtonsoft.com/json/help/html/T_Newtonsoft_Json_JsonSerializerSettings.htm
         public static JsonSerializerSettings JsonWriteOptions = new()
         {
@@ -128,7 +127,7 @@ namespace VRC.PackageManagement.Automation
                         Url = "" // this should probably point at the github/some other url down the line
                     },
                     ZipUrl = listSource.packages.Find(release => release.name == p.Id).releases[0].zipUrl,
-                    Type = p.VPMDependencies.ContainsKey("com.vrchat.worlds") ? "World" : "Avatar",
+                    Type = GetPackageType(p),
                     p.Description,
                     DisplayName = p.Title,
                     p.Version,
@@ -153,5 +152,17 @@ namespace VRC.PackageManagement.Automation
                 
                 Serilog.Log.Information($"Saved Listing to {savePath}.");
             });
+
+        string GetPackageType(IVRCPackage p)
+        {
+            string result = "Any";
+            var manifest = p as VRCPackageManifest;
+            if (manifest == null) return result;
+            
+            if (manifest.ContainsAvatarDependencies()) result = "World";
+            else if (manifest.ContainsWorldDependencies()) result = "Avatar";
+            
+            return result;
+        }
     }
 }
