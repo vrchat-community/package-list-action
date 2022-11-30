@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Linq;
 using Newtonsoft.Json;
 using Nuke.Common;
 using Nuke.Common.IO;
@@ -13,7 +14,9 @@ namespace VRC.PackageManagement.Automation
     {
         private const string PackageListingPublishFilename = "index.json";
         private const string PackageListingSourceFilename = "source.json";
-        
+        private const string WebPageAppFilename = "app.js";
+        private const string WebPageStylesFilename = "styles.css";
+
         // https://www.newtonsoft.com/json/help/html/T_Newtonsoft_Json_JsonSerializerSettings.htm
         public static JsonSerializerSettings JsonWriteOptions = new()
         {
@@ -38,9 +41,11 @@ namespace VRC.PackageManagement.Automation
         
         // assumes that "template-package" repo is checked out in sibling dir to this repo, can be overridden
         [Parameter("Path to Target Listing")] 
-        AbsolutePath PackageListingSourcePath => IsServerBuild 
+        private static AbsolutePath PackageListingSourcePath => IsServerBuild
         ? RootDirectory.Parent / PackageListingSourceFilename
         : RootDirectory.Parent / "template-package-listing" / PackageListingSourceFilename;
+
+        private static  readonly AbsolutePath WebPageSourcePath = PackageListingSourcePath.Parent / "Website";
 
         Target BuildMultiPackageListing => _ => _
             .Executes(async () =>
@@ -98,8 +103,66 @@ namespace VRC.PackageManagement.Automation
                 };
                 string savePath = ListPublishDirectory / PackageListingPublishFilename;
                 repoList.Save(savePath);
+
+                var indexReadPath = WebPageSourcePath / WebPageIndexFilename;
+                var appReadPath = WebPageSourcePath / WebPageAppFilename;
+                var stylesReadPath = WebPageSourcePath / WebPageStylesFilename;
+
+                var indexWritePath = ListPublishDirectory / WebPageIndexFilename;
+                var indexAppWritePath = ListPublishDirectory / WebPageAppFilename;
+                var indexStylesWritePath = ListPublishDirectory / WebPageStylesFilename;
+
+                string indexTemplateContent = File.ReadAllText(indexReadPath);
+
+                var listingInfo = new {
+                    Name = listSource.name,
+                    Url = listSource.url,
+                    ListingRepoUrl = "" // this should probably point to the github repository
+                };
+                
+                var formattedPackages = packages.ConvertAll(p => new {
+                    Name = p.Id,
+                    Author = new {
+                        Name = listSource.author,
+                        Url = "" // this should probably point at the github/some other url down the line
+                    },
+                    ZipUrl = listSource.packages.Find(release => release.name == p.Id).releases[0].zipUrl,
+                    Type = GetPackageType(p),
+                    p.Description,
+                    DisplayName = p.Title,
+                    p.Version,
+                    Dependencies = p.VPMDependencies.Select(dep => new {
+                            Name = dep.Key,
+                            Version = dep.Value
+                        }
+                    ).ToList(),
+                });
+
+                var rendered = Scriban.Template.Parse(indexTemplateContent).Render(
+                    new { listingInfo, packages = formattedPackages }, member => member.Name
+                );
+                File.WriteAllText(indexWritePath, rendered);
+
+                var appJsRendered = Scriban.Template.Parse(File.ReadAllText(appReadPath)).Render(
+                    new { listingInfo, packages = formattedPackages }, member => member.Name
+                );
+                File.WriteAllText(indexAppWritePath, appJsRendered);
+                // Styles are copied over without modifications
+                File.WriteAllText(indexStylesWritePath, File.ReadAllText(stylesReadPath));
                 
                 Serilog.Log.Information($"Saved Listing to {savePath}.");
             });
+
+        string GetPackageType(IVRCPackage p)
+        {
+            string result = "Any";
+            var manifest = p as VRCPackageManifest;
+            if (manifest == null) return result;
+            
+            if (manifest.ContainsAvatarDependencies()) result = "World";
+            else if (manifest.ContainsWorldDependencies()) result = "Avatar";
+            
+            return result;
+        }
     }
 }
