@@ -2,9 +2,11 @@
 using System.IO;
 using System.Net.Http;
 using System.Linq;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Nuke.Common;
 using Nuke.Common.IO;
+using Octokit;
 using VRC.PackageManagement.Automation.Multi;
 using VRC.PackageManagement.Core.Types.Packages;
 
@@ -13,6 +15,7 @@ namespace VRC.PackageManagement.Automation
     partial class Build
     {
         private const string PackageListingPublishFilename = "index.json";
+        [Parameter("Filename of source json")]
         private const string PackageListingSourceFilename = "source.json";
         private const string WebPageAppFilename = "app.js";
         private const string WebPageStylesFilename = "styles.css";
@@ -39,13 +42,83 @@ namespace VRC.PackageManagement.Automation
             },
         };
         
-        // assumes that "template-package" repo is checked out in sibling dir to this repo, can be overridden
-        [Parameter("Path to Target Listing")] 
-        private static AbsolutePath PackageListingSourcePath => IsServerBuild
-        ? RootDirectory.Parent / PackageListingSourceFilename
-        : RootDirectory.Parent / "template-package-listing" / PackageListingSourceFilename;
+        // assumes that "template-package-listings" repo is checked out in sibling dir for local testing, can be overriden
+        [Parameter("Path to Target Listing Root")] 
+        static AbsolutePath PackageListingSourceFolder = IsServerBuild
+            ? RootDirectory.Parent
+            : RootDirectory.Parent / "template-package-listing";
+        
+        static AbsolutePath PackageListingSourcePath = PackageListingSourceFolder / PackageListingSourceFilename;
 
-        private static  readonly AbsolutePath WebPageSourcePath = PackageListingSourcePath.Parent / "Website";
+        static readonly AbsolutePath WebPageSourcePath = PackageListingSourceFolder / "Website";
+
+        private async Task<List<IVRCPackage>> GetPackagesFromGitHubRepo(string ownerSlashName)
+        {
+            // Split string into owner and repo, or skip if invalid.
+            var parts = ownerSlashName.Split('/');
+            if (parts.Length != 2)
+            {
+                Serilog.Log.Fatal($"Could not get owner and repository from included repo info {parts}.");
+                return null;
+            }
+            string owner = parts[0];
+            string name = parts[1];
+            
+            GitHubClient client = new(new ProductHeaderValue("VRChat-Package-Manager-Automation"));
+            if (IsServerBuild)
+            {
+                client.Credentials = new Credentials(GitHubActions.Token);
+            }
+            
+            var targetRepo = await client.Repository.Get(owner, name);
+            if (targetRepo == null)
+            {
+                Serilog.Log.Fatal($"Could not get remote repo {owner}/{name}.");
+                return null;
+            }
+            
+            // Go through each release
+            var releases = await client.Repository.Release.GetAll(owner, name);
+            if (releases.Count == 0)
+            {
+                Serilog.Log.Warning($"Found no releases for {owner}/{name}");
+                return null;
+            }
+
+            var packages = new List<IVRCPackage>();
+            
+            foreach (Octokit.Release release in releases)
+            {
+                Serilog.Log.Information($"Looking at {owner}/{name} release {release.Name}.");
+            
+                // Retrieve manifest
+                Serilog.Log.Information($"Fetching manifest");
+                var manifest = await GetManifestFromRelease(release);
+
+                if (manifest == null)
+                {
+                    Serilog.Log.Warning($"Could not get manifest for {release.Name}, skipping.");
+                    continue;
+                }
+                Serilog.Log.Information($"Manifest fetched and deserialized.");
+            
+                // Check if zipUrl exists and is valid
+                Serilog.Log.Information($"Looking for Release Zip for {release.Name}.");
+                ReleaseAsset zipAsset = release.Assets.FirstOrDefault(asset => asset.Name.EndsWith(".zip"));
+                if (zipAsset == default)
+                {
+                    Serilog.Log.Warning($"Could not find release for {release.Name}, skipping.");
+                    continue;
+                }
+                
+                Serilog.Log.Information($"Found Release Zip {zipAsset.Name}. Adding package and moving on...");
+                
+                // set contents of version object from retrieved manifest
+                packages.Add(manifest);
+            }
+
+            return packages;
+        }
 
         Target BuildMultiPackageListing => _ => _
             .Executes(async () =>
@@ -56,6 +129,19 @@ namespace VRC.PackageManagement.Automation
                 
                 // Make collection for constructed packages
                 var packages = new List<IVRCPackage>();
+                
+                // Add GitHub repos if included
+                if (listSource.githubRepos != null && listSource.githubRepos.Count > 0)
+                {
+                    foreach (string ownerSlashName in listSource.githubRepos)
+                    {
+                        var discoveredPackages = await GetPackagesFromGitHubRepo(ownerSlashName);
+                        if (discoveredPackages != null && discoveredPackages.Count > 0)
+                        {
+                            packages.AddRange(discoveredPackages);
+                        }
+                    }
+                }
 
                 // Go through each package 
                 foreach (var info in listSource.packages)

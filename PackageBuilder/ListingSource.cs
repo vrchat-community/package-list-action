@@ -8,6 +8,7 @@ namespace VRC.PackageManagement.Automation.Multi
         public string author { get; set; }
         public string url { get; set; }
         public List<PackageInfo> packages { get; set; }
+		public List<string> githubRepos { get; set; }
     }
     
     public class PackageInfo

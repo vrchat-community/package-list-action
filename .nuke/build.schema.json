@@ -59,9 +59,13 @@
           "type": "boolean",
           "description": "Disables displaying the NUKE logo"
         },
-        "PackageListingSourcePath": {
+        "PackageListingSourceFilename": {
           "type": "string",
-          "description": "Path to Target Listing"
+          "description": "Filename of source json"
+        },
+        "PackageListingSourceFolder": {
+          "type": "string",
+          "description": "Path to Target Listing Root"
         },
         "Partition": {
           "type": "string",

@@ -182,8 +182,11 @@ namespace VRC.PackageManagement.Automation
                    new HttpRequestMessage(HttpMethod.Get, url))
             {
                 requestMessage.Headers.Accept.ParseAdd("application/octet-stream");
-                requestMessage.Headers.Authorization =
-                    new AuthenticationHeaderValue("Bearer", GitHubActions.Token);
+                if (IsServerBuild)
+                {
+                    requestMessage.Headers.Authorization =
+                        new AuthenticationHeaderValue("Bearer", GitHubActions.Token);
+                }
 
                 return await Http.SendAsync(requestMessage);
             }
@@ -191,31 +194,28 @@ namespace VRC.PackageManagement.Automation
 
         async Task<string> GetAuthenticatedString(string url)
         {
-            if (IsServerBuild)
+            var result = await GetAuthenticatedResponse(url);
+            if (result.IsSuccessStatusCode)
             {
-                var result = await GetAuthenticatedResponse(url);
-                if (result.IsSuccessStatusCode)
-                {
-                    return await result.Content.ReadAsStringAsync();
-                }
-                else
-                {
-                    Serilog.Log.Error($"Could not download manifest from {url}");
-                    return null;
-                }
+                return await result.Content.ReadAsStringAsync();
             }
             else
             {
-                // Treat like absolute path for local files
-                return File.ReadAllText(url);
+                Serilog.Log.Error($"Could not download manifest from {url}");
+                return null;
             }
         }
 
         async Task<VRCPackageManifest> GetManifestFromRelease(Release release)
         {
-            // Release must have package.json or else it will throw an exception here
+            // Release must have package.json
             ReleaseAsset manifestAsset =
-                release.Assets.First(asset => asset.Name.CompareTo(PackageManifestFilename) == 0);
+                release.Assets.FirstOrDefault(asset => asset.Name.CompareTo(PackageManifestFilename) == 0);
+
+            if (manifestAsset == default)
+            {
+                return null;
+            }
 
             // Will log an error if it fails, stopping the automation
             return VRCPackageManifest.FromJson(await GetAuthenticatedString(manifestAsset.Url));
