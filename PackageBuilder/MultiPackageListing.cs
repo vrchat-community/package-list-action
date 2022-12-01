@@ -212,7 +212,7 @@ namespace VRC.PackageManagement.Automation
                         Name = listSource.author,
                         Url = "" // this should probably point at the github/some other url down the line
                     },
-                    ZipUrl = listSource.packages.Find(release => release.name == p.Id).releases[0].zipUrl,
+                    ZipUrl = listSource.packages.Find(release => release.name == p.Id)?.releases[0].zipUrl,
                     Type = GetPackageType(p),
                     p.Description,
                     DisplayName = p.Title,
