@@ -245,8 +245,8 @@ namespace VRC.PackageManagement.Automation
             var manifest = p as VRCPackageManifest;
             if (manifest == null) return result;
             
-            if (manifest.ContainsAvatarDependencies()) result = "World";
-            else if (manifest.ContainsWorldDependencies()) result = "Avatar";
+            if (manifest.ContainsAvatarDependencies()) result = "Avatar";
+            else if (manifest.ContainsWorldDependencies()) result = "World";
             
             return result;
         }
