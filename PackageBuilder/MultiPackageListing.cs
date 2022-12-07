@@ -18,7 +18,6 @@ namespace VRC.PackageManagement.Automation
         [Parameter("Filename of source json")]
         private const string PackageListingSourceFilename = "source.json";
         private const string WebPageAppFilename = "app.js";
-        private const string WebPageStylesFilename = "styles.css";
 
         // https://www.newtonsoft.com/json/help/html/T_Newtonsoft_Json_JsonSerializerSettings.htm
         public static JsonSerializerSettings JsonWriteOptions = new()
@@ -51,6 +50,7 @@ namespace VRC.PackageManagement.Automation
         static AbsolutePath PackageListingSourcePath = PackageListingSourceFolder / PackageListingSourceFilename;
 
         static readonly AbsolutePath WebPageSourcePath = PackageListingSourceFolder / "Website";
+
 
         private async Task<List<IVRCPackage>> GetPackagesFromGitHubRepo(string ownerSlashName)
         {
@@ -184,32 +184,43 @@ namespace VRC.PackageManagement.Automation
                 var repoList = new VRCRepoList(packages)
                 {
                     name = listSource.name,
-                    author = listSource.author,
+                    author = listSource.author.name,
                     url = listSource.url
                 };
+
+                FileSystemTasks.EnsureCleanDirectory(ListPublishDirectory);
+
                 string savePath = ListPublishDirectory / PackageListingPublishFilename;
                 repoList.Save(savePath);
 
                 var indexReadPath = WebPageSourcePath / WebPageIndexFilename;
                 var appReadPath = WebPageSourcePath / WebPageAppFilename;
-                var stylesReadPath = WebPageSourcePath / WebPageStylesFilename;
-
                 var indexWritePath = ListPublishDirectory / WebPageIndexFilename;
                 var indexAppWritePath = ListPublishDirectory / WebPageAppFilename;
-                var indexStylesWritePath = ListPublishDirectory / WebPageStylesFilename;
 
                 string indexTemplateContent = File.ReadAllText(indexReadPath);
 
                 var listingInfo = new {
                     Name = listSource.name,
                     Url = listSource.url,
-                    ListingRepoUrl = "" // this should probably point to the github repository
+                    Description = listSource.description,
+                    InfoLink = new {
+                        Text = listSource.infoLink?.text,
+                        Url = listSource.infoLink?.url,
+                    },
+                    Author = new {
+                        Name = listSource.author.name,
+                        Url = listSource.author.url,
+                        Email = listSource.author.email
+                    },
+                    BannerImage = !string.IsNullOrEmpty(listSource.bannerUrl),
+                    BannerImageUrl = listSource.bannerUrl,
                 };
                 
                 var formattedPackages = packages.ConvertAll(p => new {
                     Name = p.Id,
                     Author = new {
-                        Name = listSource.author,
+                        Name = listSource.author.name,
                         Url = "" // this should probably point at the github/some other url down the line
                     },
                     ZipUrl = listSource.packages.Find(release => release.name == p.Id)?.releases[0].zipUrl,
@@ -227,14 +238,15 @@ namespace VRC.PackageManagement.Automation
                 var rendered = Scriban.Template.Parse(indexTemplateContent).Render(
                     new { listingInfo, packages = formattedPackages }, member => member.Name
                 );
+
                 File.WriteAllText(indexWritePath, rendered);
 
                 var appJsRendered = Scriban.Template.Parse(File.ReadAllText(appReadPath)).Render(
                     new { listingInfo, packages = formattedPackages }, member => member.Name
                 );
                 File.WriteAllText(indexAppWritePath, appJsRendered);
-                // Styles are copied over without modifications
-                File.WriteAllText(indexStylesWritePath, File.ReadAllText(stylesReadPath));
+
+                FileSystemTasks.CopyDirectoryRecursively(WebPageSourcePath, ListPublishDirectory, DirectoryExistsPolicy.Merge, FileExistsPolicy.Skip);
                 
                 Serilog.Log.Information($"Saved Listing to {savePath}.");
             });
