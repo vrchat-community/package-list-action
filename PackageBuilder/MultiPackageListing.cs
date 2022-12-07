@@ -188,7 +188,11 @@ namespace VRC.PackageManagement.Automation
                     url = listSource.url
                 };
 
-                FileSystemTasks.EnsureCleanDirectory(ListPublishDirectory);
+                // Server builds write into the source directory itself
+                // So we dont need to clear it out
+                if (!IsServerBuild) {
+                    FileSystemTasks.EnsureCleanDirectory(ListPublishDirectory);
+                }
 
                 string savePath = ListPublishDirectory / PackageListingPublishFilename;
                 repoList.Save(savePath);
@@ -246,7 +250,9 @@ namespace VRC.PackageManagement.Automation
                 );
                 File.WriteAllText(indexAppWritePath, appJsRendered);
 
-                FileSystemTasks.CopyDirectoryRecursively(WebPageSourcePath, ListPublishDirectory, DirectoryExistsPolicy.Merge, FileExistsPolicy.Skip);
+                if (!IsServerBuild) {
+                    FileSystemTasks.CopyDirectoryRecursively(WebPageSourcePath, ListPublishDirectory, DirectoryExistsPolicy.Merge, FileExistsPolicy.Skip);
+                }
                 
                 Serilog.Log.Information($"Saved Listing to {savePath}.");
             });
