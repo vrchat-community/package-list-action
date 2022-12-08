@@ -59,6 +59,14 @@
           "type": "boolean",
           "description": "Disables displaying the NUKE logo"
         },
+        "PackageListingSourceFilename": {
+          "type": "string",
+          "description": "Filename of source json"
+        },
+        "PackageListingSourceFolder": {
+          "type": "string",
+          "description": "Path to Target Listing Root"
+        },
         "Partition": {
           "type": "string",
           "description": "Partition to use on CI"
@@ -84,6 +92,7 @@
           "items": {
             "type": "string",
             "enum": [
+              "BuildMultiPackageListing",
               "BuildRepoListing",
               "RebuildHomePage"
             ]
@@ -95,6 +104,7 @@
           "items": {
             "type": "string",
             "enum": [
+              "BuildMultiPackageListing",
               "BuildRepoListing",
               "RebuildHomePage"
             ]
