@@ -128,7 +128,7 @@ namespace VRC.PackageManagement.Automation
                 var listSource = JsonConvert.DeserializeObject<ListingSource>(listSourceString, JsonReadOptions);
                 
                 // Make collection for constructed packages
-                var packages = new List<IVRCPackage>();
+                var packages = new List<VRCPackageManifest>();
                 
                 // Add GitHub repos if included
                 if (listSource.githubRepos != null && listSource.githubRepos.Count > 0)
@@ -138,7 +138,7 @@ namespace VRC.PackageManagement.Automation
                         var discoveredPackages = await GetPackagesFromGitHubRepo(ownerSlashName);
                         if (discoveredPackages != null && discoveredPackages.Count > 0)
                         {
-                            packages.AddRange(discoveredPackages);
+                            packages.AddRange(discoveredPackages.ConvertAll(p => (VRCPackageManifest) p));
                         }
                     }
                 }
@@ -224,10 +224,13 @@ namespace VRC.PackageManagement.Automation
                 var formattedPackages = packages.ConvertAll(p => new {
                     Name = p.Id,
                     Author = new {
-                        Name = listSource.author.name,
-                        Url = "" // this should probably point at the github/some other url down the line
+                        Name = p.author.name,
+                        Url = p.author.url,
                     },
                     ZipUrl = listSource.packages.Find(release => release.name == p.Id)?.releases[0].zipUrl,
+                    License = p.license,
+                    LicenseUrl = p.licensesUrl,
+                    Keywords = p.keywords,
                     Type = GetPackageType(p),
                     p.Description,
                     DisplayName = p.Title,
