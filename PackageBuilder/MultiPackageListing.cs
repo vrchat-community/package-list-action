@@ -144,38 +144,41 @@ namespace VRC.PackageManagement.Automation
                 }
 
                 // Go through each package 
-                foreach (var info in listSource.packages)
+                if (listSource.packages != null)
                 {
-                    Serilog.Log.Information($"Looking at {info.name} with {info.releases.Count} releases.");
-                    
-                    // Just used in logging
-                    int releaseIndex = 0;
-                    
-                    // Go through each release in each package
-                    foreach (var release in info.releases)
+                    foreach (var info in listSource.packages)
                     {
-                        releaseIndex++;
-                        
-                        Serilog.Log.Information($"Looking at {info.name} release {releaseIndex}.");
-                        
-                        // Retrieve manifest
-                        Serilog.Log.Information($"Fetching manifest from {release.manifestUrl}.");
-                        var manifest = VRCPackageManifest.FromJson(await GetRemoteString(release.manifestUrl));
-                        Serilog.Log.Information($"Manifest fetched and deserialized.");
-                        
-                        // Check if zipUrl exists and is valid
-                        Serilog.Log.Information($"Fetching zip headers from {release.zipUrl}.");
-                        using (var headerResponse = await Http.GetAsync(release.zipUrl, HttpCompletionOption.ResponseHeadersRead))
+                        Serilog.Log.Information($"Looking at {info.name} with {info.releases.Count} releases.");
+                    
+                        // Just used in logging
+                        int releaseIndex = 0;
+                    
+                        // Go through each release in each package
+                        foreach (var release in info.releases)
                         {
-                            if (!headerResponse.IsSuccessStatusCode)
+                            releaseIndex++;
+                        
+                            Serilog.Log.Information($"Looking at {info.name} release {releaseIndex}.");
+                        
+                            // Retrieve manifest
+                            Serilog.Log.Information($"Fetching manifest from {release.manifestUrl}.");
+                            var manifest = VRCPackageManifest.FromJson(await GetRemoteString(release.manifestUrl));
+                            Serilog.Log.Information($"Manifest fetched and deserialized.");
+                        
+                            // Check if zipUrl exists and is valid
+                            Serilog.Log.Information($"Fetching zip headers from {release.zipUrl}.");
+                            using (var headerResponse = await Http.GetAsync(release.zipUrl, HttpCompletionOption.ResponseHeadersRead))
                             {
-                                Serilog.Log.Fatal($"Could not find valid zip file at {release.zipUrl}");
-                                return;
+                                if (!headerResponse.IsSuccessStatusCode)
+                                {
+                                    Serilog.Log.Fatal($"Could not find valid zip file at {release.zipUrl}");
+                                    return;
+                                }
                             }
+                            // set contents of version object from retrieved manifest
+                            Serilog.Log.Information($"Zip file exists. Adding package and moving on...");
+                            packages.Add(manifest);
                         }
-                        // set contents of version object from retrieved manifest
-                        Serilog.Log.Information($"Zip file exists. Adding package and moving on...");
-                        packages.Add(manifest);
                     }
                 }
 
