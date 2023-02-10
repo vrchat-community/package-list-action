@@ -112,6 +112,8 @@ namespace VRC.PackageManagement.Automation
                 }
                 
                 Serilog.Log.Information($"Found Release Zip {zipAsset.Name}. Adding package and moving on...");
+
+                manifest.url = zipAsset.BrowserDownloadUrl;
                 
                 // set contents of version object from retrieved manifest
                 packages.Add(manifest);
@@ -175,6 +177,9 @@ namespace VRC.PackageManagement.Automation
                                     return;
                                 }
                             }
+
+                            // Point manifest towards release
+                            manifest.url = release.zipUrl;
                             // set contents of version object from retrieved manifest
                             Serilog.Log.Information($"Zip file exists. Adding package and moving on...");
                             packages.Add(manifest);
@@ -230,7 +235,7 @@ namespace VRC.PackageManagement.Automation
                         Name = p.author.name,
                         Url = p.author.url,
                     },
-                    ZipUrl = listSource.packages.Find(release => release.name == p.Id)?.releases[0].zipUrl,
+                    ZipUrl = p.url,
                     License = p.license,
                     LicenseUrl = p.licensesUrl,
                     Keywords = p.keywords,
