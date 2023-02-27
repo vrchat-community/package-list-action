@@ -232,8 +232,8 @@ namespace VRC.PackageManagement.Automation
                 var formattedPackages = packages.ConvertAll(p => new {
                     Name = p.Id,
                     Author = new {
-                        Name = p.author.name,
-                        Url = p.author.url,
+                        Name = p.author?.name,
+                        Url = p.author?.url,
                     },
                     ZipUrl = p.url,
                     License = p.license,
