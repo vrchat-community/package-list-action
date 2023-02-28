@@ -27,7 +27,13 @@ namespace VRC.PackageManagement.Automation.Multi
     
     public class PackageInfo
     {
-        public string name { get; set; }
-        public List<string> releases { get; set; }
+        public string id { get; set; }
+        public List<Release> releases { get; set; }
+    }
+
+    public class Release
+    {
+        public string url { get; set; }
+        public string version { get; set; }
     }
 }

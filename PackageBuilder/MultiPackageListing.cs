@@ -129,7 +129,7 @@ namespace VRC.PackageManagement.Automation
                 
                 // Get existing RepoList or create empty one, so we can skip existing packages
                 var currentRepoListString = await GetAuthenticatedString(CurrentListingUrl);
-                var currentRepoList = (currentRepoListString == null)
+                var currentPackages = (currentRepoListString == null)
                     ? new List<IVRCPackage>()
                     : JsonConvert.DeserializeObject<VRCRepoList>(currentRepoListString, JsonReadOptions).GetAll(); 
 
@@ -147,7 +147,7 @@ namespace VRC.PackageManagement.Automation
                             packages.AddRange(
                                 discoveredPackages
                                     .Where(p=>
-                                        currentRepoList.Exists(m=>m.Id == p.Id && m.Version == p.Version))
+                                        currentPackages.Exists(m=>m.Id == p.Id && m.Version == p.Version))
                                     .ToList()
                                     .ConvertAll(p => (VRCPackageManifest) p));
                         }
@@ -159,26 +159,40 @@ namespace VRC.PackageManagement.Automation
                 {
                     foreach (var info in listSource.packages)
                     {
-                        Serilog.Log.Information($"Looking at {info.name} with {info.releases.Count} releases.");
+                        Serilog.Log.Information($"Looking at {info.id} with {info.releases.Count} releases.");
                     
                         // Just used in logging
                         int releaseIndex = 0;
                     
                         // Go through each release in each package
-                        foreach (var url in info.releases)
+                        foreach (var release in info.releases)
                         {
                             releaseIndex++;
                         
-                            Serilog.Log.Information($"Looking at {info.name} release {releaseIndex}.");
+                            // Skip packages already in listing
+                            if (currentPackages.Exists(m => m.Id == info.id && m.Version == release.version))
+                            {
+                                Serilog.Log.Information($"Listing already contains {info.id} {release.version}, skipping.");
+                                continue;
+                            }
+                            
+                            Serilog.Log.Information($"Looking at {info.id} {release.version}.");
 
                             // Check if zipUrl exists and is valid
-                            Serilog.Log.Information($"Checking Zip URL {url}.");
+                            Serilog.Log.Information($"Checking Zip URL {release}.");
 
-                            var manifest = await HashZipAndReturnManifest(url);
+                            var manifest = await HashZipAndReturnManifest(release.url);
                             if (manifest == null)
                             {
-                                Assert.Fail($"Could not create updated manifest from zip file {url}");
+                                Assert.Fail($"Could not create updated manifest from zip file {release}");
                             }
+
+                            // Ensure the Id and Version from the extracted package match the info supplied in the source 
+                            if (manifest.Id != info.id)
+                                Assert.Fail($"The manifest id in the zip is {manifest.Id}, which does not match the supplied id {info.id}, cannot publish this package.");
+                            
+                            if (manifest.Version != release.version)
+                                Assert.Fail($"The manifest version in the zip is {manifest.Version}, which does not match the supplied id {release.version}, cannot publish this package.");
 
                             // set contents of version object from retrieved manifest
                             Serilog.Log.Information($"Zip file exists. Adding package and moving on...");
