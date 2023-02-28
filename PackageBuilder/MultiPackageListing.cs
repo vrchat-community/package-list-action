@@ -86,7 +86,7 @@ namespace VRC.PackageManagement.Automation
             var releases = await client.Repository.Release.GetAll(owner, name);
             if (releases.Count == 0)
             {
-                Serilog.Log.Warning($"Found no releases for {owner}/{name}");
+                Serilog.Log.Information($"Found no releases for {owner}/{name}");
                 return null;
             }
 
@@ -101,7 +101,7 @@ namespace VRC.PackageManagement.Automation
                 ReleaseAsset zipAsset = release.Assets.FirstOrDefault(asset => asset.Name.EndsWith(".zip"));
                 if (zipAsset == default)
                 {
-                    Serilog.Log.Warning($"Could not find release for {release.Name}, skipping.");
+                    Serilog.Log.Information($"Could not find release for {release.Name}, skipping.");
                     continue;
                 }
                 
@@ -179,7 +179,7 @@ namespace VRC.PackageManagement.Automation
                             Serilog.Log.Information($"Looking at {info.id} {release.version}.");
 
                             // Check if zipUrl exists and is valid
-                            Serilog.Log.Information($"Checking Zip URL {release}.");
+                            Serilog.Log.Information($"Checking Zip URL {release.url}.");
 
                             var manifest = await HashZipAndReturnManifest(release.url);
                             if (manifest == null)
