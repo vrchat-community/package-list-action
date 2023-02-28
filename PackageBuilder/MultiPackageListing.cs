@@ -113,6 +113,13 @@ namespace VRC.PackageManagement.Automation
                 
                 Serilog.Log.Information($"Found Release Zip {zipAsset.Name}. Adding package and moving on...");
 
+                var hash = await GetHashFromUrl(zipAsset.BrowserDownloadUrl);
+                if (string.IsNullOrWhiteSpace(hash))
+                {
+                    Assert.Fail($"Could not calculate hash for zip");
+                }
+                manifest.vrchatVersion = hash; // Kludge for testing, need to add hash field
+
                 manifest.url = zipAsset.BrowserDownloadUrl;
                 
                 // set contents of version object from retrieved manifest
@@ -168,21 +175,13 @@ namespace VRC.PackageManagement.Automation
                             Serilog.Log.Information($"Manifest fetched and deserialized.");
                         
                             // Check if zipUrl exists and is valid
-                            Serilog.Log.Information($"Fetching zip headers from {release.zipUrl}.");
-                            using (var headerResponse = await Http.GetAsync(release.zipUrl))
+                            Serilog.Log.Information($"Checking Zip URL {release.zipUrl}.");
+                            var hash = await GetHashFromUrl(release.zipUrl);
+                            if (string.IsNullOrWhiteSpace(hash))
                             {
-                                if (!headerResponse.IsSuccessStatusCode)
-                                {
-                                    Assert.Fail($"Could not find valid zip file at {release.zipUrl}");
-                                }
-
-                                var hash = GetStreamHashAsString(headerResponse.Content.ReadAsStream());
-                                if (string.IsNullOrWhiteSpace(hash))
-                                {
-                                    Assert.Fail($"Could not calculate hash for zip");
-                                }
-                                manifest.vrchatVersion = hash; // Kludge for testing, need to add this field
+                                Assert.Fail($"Could not calculate hash for zip");
                             }
+                            manifest.vrchatVersion = hash; // Kludge for testing, need to add hash field
 
                             // Point manifest towards release
                             manifest.url = release.zipUrl;
@@ -284,6 +283,18 @@ namespace VRC.PackageManagement.Automation
             else if (manifest.ContainsWorldDependencies()) result = "World";
             
             return result;
+        }
+        
+        async Task<string> GetHashFromUrl(string url)
+        {
+            using (var response = await Http.GetAsync(url))
+            {
+                if (!response.IsSuccessStatusCode)
+                {
+                    Assert.Fail($"Could not find valid zip file at {url}");
+                }
+                return GetStreamHashAsString(response.Content.ReadAsStream());
+            }
         }
 
         static string GetStreamHashAsString(Stream stream)
