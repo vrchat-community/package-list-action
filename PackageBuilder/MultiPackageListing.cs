@@ -145,17 +145,17 @@ namespace VRC.PackageManagement.Automation
                 {
                     foreach (var info in listSource.packages)
                     {
-                        Serilog.Log.Information($"Looking at Package with {info.Count} releases.");
+                        Serilog.Log.Information($"Looking at {info.name} with {info.releases.Count} releases.");
                     
                         // Just used in logging
                         int releaseIndex = 0;
                     
                         // Go through each release in each package
-                        foreach (var url in info)
+                        foreach (var url in info.releases)
                         {
                             releaseIndex++;
                         
-                            Serilog.Log.Information($"Looking at release {releaseIndex}.");
+                            Serilog.Log.Information($"Looking at {info.name} release {releaseIndex}.");
 
                             // Check if zipUrl exists and is valid
                             Serilog.Log.Information($"Checking Zip URL {url}.");
