@@ -25,7 +25,7 @@ namespace VRC.PackageManagement.Automation.Multi
         public string email {get; set;}
     }
     
-    public class PackageInfo : List<string>
+    public class PackageInfo
     {
         public string name { get; set; }
         public List<string> releases { get; set; }
