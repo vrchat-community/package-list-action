@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
-using System.Net.Http;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Nuke.Common;
@@ -169,13 +169,20 @@ namespace VRC.PackageManagement.Automation
                         
                             // Check if zipUrl exists and is valid
                             Serilog.Log.Information($"Fetching zip headers from {release.zipUrl}.");
-                            using (var headerResponse = await Http.GetAsync(release.zipUrl, HttpCompletionOption.ResponseHeadersRead))
+                            using (var headerResponse = await Http.GetAsync(release.zipUrl))
                             {
                                 if (!headerResponse.IsSuccessStatusCode)
                                 {
                                     Serilog.Log.Fatal($"Could not find valid zip file at {release.zipUrl}");
                                     return;
                                 }
+
+                                var hash = GetStreamHashAsString(headerResponse.Content.ReadAsStream());
+                                if (string.IsNullOrWhiteSpace(hash))
+                                {
+                                    Serilog.Log.Fatal($"Could not calculate hash for zip");
+                                }
+                                manifest.vrchatVersion = hash; // Kludge for testing, need to add this field
                             }
 
                             // Point manifest towards release
@@ -278,6 +285,16 @@ namespace VRC.PackageManagement.Automation
             else if (manifest.ContainsWorldDependencies()) result = "World";
             
             return result;
+        }
+
+        static string GetStreamHashAsString(Stream stream)
+        {
+            using (var hash = SHA256.Create())
+            {
+                return string.Concat(hash
+                    .ComputeHash(stream)
+                    .Select(item => item.ToString("x2")));
+            }
         }
     }
 }
