@@ -151,19 +151,19 @@ namespace VRC.PackageManagement.Automation
                         int releaseIndex = 0;
                     
                         // Go through each release in each package
-                        foreach (var release in info.releases)
+                        foreach (var url in info.releases)
                         {
                             releaseIndex++;
                         
                             Serilog.Log.Information($"Looking at {info.name} release {releaseIndex}.");
 
                             // Check if zipUrl exists and is valid
-                            Serilog.Log.Information($"Checking Zip URL {release.zipUrl}.");
+                            Serilog.Log.Information($"Checking Zip URL {url}.");
 
-                            var manifest = await HashZipAndReturnManifest(release.zipUrl);
+                            var manifest = await HashZipAndReturnManifest(url);
                             if (manifest == null)
                             {
-                                Assert.Fail($"Could not create updated manifest from zip file {release.zipUrl}");
+                                Assert.Fail($"Could not create updated manifest from zip file {url}");
                             }
 
                             // set contents of version object from retrieved manifest
