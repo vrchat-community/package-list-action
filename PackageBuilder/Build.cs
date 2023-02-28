@@ -218,7 +218,7 @@ namespace VRC.PackageManagement.Automation
             }
 
             // Will log an error if it fails, stopping the automation
-            return VRCPackageManifest.FromJson(await GetAuthenticatedString(manifestAsset.Url));
+            return VRCPackageManifest.FromJson(await GetAuthenticatedString(manifestAsset.BrowserDownloadUrl));
         }
 
         Target RebuildHomePage => _ => _
