@@ -2,7 +2,9 @@
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
+using ICSharpCode.SharpZipLib.Zip;
 using Newtonsoft.Json;
 using Nuke.Common;
 using Nuke.Common.IO;
@@ -90,18 +92,7 @@ namespace VRC.PackageManagement.Automation
             foreach (Octokit.Release release in releases)
             {
                 Serilog.Log.Information($"Looking at {owner}/{name} release {release.Name}.");
-            
-                // Retrieve manifest
-                Serilog.Log.Information($"Fetching manifest");
-                var manifest = await GetManifestFromRelease(release);
 
-                if (manifest == null)
-                {
-                    Serilog.Log.Warning($"Could not get manifest for {release.Name}, skipping.");
-                    continue;
-                }
-                Serilog.Log.Information($"Manifest fetched and deserialized.");
-            
                 // Check if zipUrl exists and is valid
                 Serilog.Log.Information($"Looking for Release Zip for {release.Name}.");
                 ReleaseAsset zipAsset = release.Assets.FirstOrDefault(asset => asset.Name.EndsWith(".zip"));
@@ -111,17 +102,14 @@ namespace VRC.PackageManagement.Automation
                     continue;
                 }
                 
-                Serilog.Log.Information($"Found Release Zip {zipAsset.Name}. Adding package and moving on...");
-
-                var hash = await GetHashFromUrl(zipAsset.BrowserDownloadUrl);
-                if (string.IsNullOrWhiteSpace(hash))
+                var manifest = await HashZipAndReturnManifest(zipAsset.BrowserDownloadUrl);
+                if (manifest == null)
                 {
-                    Assert.Fail($"Could not calculate hash for zip");
+                    Assert.Fail($"Could not create updated manifest from zip file {zipAsset.BrowserDownloadUrl}");
                 }
-                manifest.vrchatVersion = hash; // Kludge for testing, need to add hash field
-
-                manifest.url = zipAsset.BrowserDownloadUrl;
                 
+                Serilog.Log.Information($"Found Release Zip {zipAsset.Name}: {zipAsset.Id}.");
+
                 // set contents of version object from retrieved manifest
                 packages.Add(manifest);
             }
@@ -168,23 +156,16 @@ namespace VRC.PackageManagement.Automation
                             releaseIndex++;
                         
                             Serilog.Log.Information($"Looking at {info.name} release {releaseIndex}.");
-                        
-                            // Retrieve manifest
-                            Serilog.Log.Information($"Fetching manifest from {release.manifestUrl}.");
-                            var manifest = VRCPackageManifest.FromJson(await GetRemoteString(release.manifestUrl));
-                            Serilog.Log.Information($"Manifest fetched and deserialized.");
-                        
+
                             // Check if zipUrl exists and is valid
                             Serilog.Log.Information($"Checking Zip URL {release.zipUrl}.");
-                            var hash = await GetHashFromUrl(release.zipUrl);
-                            if (string.IsNullOrWhiteSpace(hash))
-                            {
-                                Assert.Fail($"Could not calculate hash for zip");
-                            }
-                            manifest.vrchatVersion = hash; // Kludge for testing, need to add hash field
 
-                            // Point manifest towards release
-                            manifest.url = release.zipUrl;
+                            var manifest = await HashZipAndReturnManifest(release.zipUrl);
+                            if (manifest == null)
+                            {
+                                Assert.Fail($"Could not create updated manifest from zip file {release.zipUrl}");
+                            }
+
                             // set contents of version object from retrieved manifest
                             Serilog.Log.Information($"Zip file exists. Adding package and moving on...");
                             packages.Add(manifest);
@@ -284,8 +265,8 @@ namespace VRC.PackageManagement.Automation
             
             return result;
         }
-        
-        async Task<string> GetHashFromUrl(string url)
+
+        async Task<VRCPackageManifest> HashZipAndReturnManifest(string url)
         {
             using (var response = await Http.GetAsync(url))
             {
@@ -293,16 +274,42 @@ namespace VRC.PackageManagement.Automation
                 {
                     Assert.Fail($"Could not find valid zip file at {url}");
                 }
-                return GetStreamHashAsString(response.Content.ReadAsStream());
+
+                var bytes = await response.Content.ReadAsByteArrayAsync();
+                var manifestBytes = GetFileFromZip(bytes, PackageManifestFilename);
+                var manifestString = Encoding.UTF8.GetString(manifestBytes);
+                var manifest = VRCPackageManifest.FromJson(manifestString);
+                var hash = GetHashForBytes(bytes);
+                manifest.vrchatVersion = hash; // putting the hash in here for now
+                // Point manifest towards release
+                manifest.url = url;
+                return manifest;
             }
         }
+        
+        public static byte[] GetFileFromZip(byte[] bytes, string fileName)
+        {
+            byte[] ret = null;
+            var stream = new MemoryStream(bytes);
+            ZipFile zf = new ZipFile(stream);
+            ZipEntry ze = zf.GetEntry(fileName);
 
-        static string GetStreamHashAsString(Stream stream)
+            if (ze != null)
+            {
+                Stream s = zf.GetInputStream(ze);
+                ret = new byte[ze.Size];
+                s.Read(ret, 0, ret.Length);
+            }
+
+            return ret;
+        }
+
+        static string GetHashForBytes(byte[] bytes)
         {
             using (var hash = SHA256.Create())
             {
                 return string.Concat(hash
-                    .ComputeHash(stream)
+                    .ComputeHash(bytes)
                     .Select(item => item.ToString("x2")));
             }
         }
