@@ -214,8 +214,9 @@ namespace VRC.PackageManagement.Automation
                     BannerImage = !string.IsNullOrEmpty(listSource.bannerUrl),
                     BannerImageUrl = listSource.bannerUrl,
                 };
-                
-                var formattedPackages = packages.ConvertAll(p => new {
+
+                var latestPackages = packages.OrderByDescending(p => p.Version).DistinctBy(p => p.Id).ToList();
+                var formattedPackages = latestPackages.ConvertAll(p => new {
                     Name = p.Id,
                     Author = new {
                         Name = p.author?.name,
