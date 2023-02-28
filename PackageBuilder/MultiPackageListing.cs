@@ -21,6 +21,10 @@ namespace VRC.PackageManagement.Automation
         private const string PackageListingSourceFilename = "source.json";
         private const string WebPageAppFilename = "app.js";
 
+        [Parameter("Path to existing index.json file, typically https://{owner}.github.io/{repo}/index.json")]
+        string CurrentListingUrl =>
+            $"https://{GitHubActions.RepositoryOwner}.github.io/{GitHubActions.Repository.Split('/')[1]}/{PackageListingPublishFilename}";
+
         // https://www.newtonsoft.com/json/help/html/T_Newtonsoft_Json_JsonSerializerSettings.htm
         public static JsonSerializerSettings JsonWriteOptions = new()
         {
@@ -52,7 +56,6 @@ namespace VRC.PackageManagement.Automation
         static AbsolutePath PackageListingSourcePath = PackageListingSourceFolder / PackageListingSourceFilename;
 
         static readonly AbsolutePath WebPageSourcePath = PackageListingSourceFolder / "Website";
-
 
         private async Task<List<IVRCPackage>> GetPackagesFromGitHubRepo(string ownerSlashName)
         {
@@ -124,6 +127,12 @@ namespace VRC.PackageManagement.Automation
                 var listSourceString = File.ReadAllText(PackageListingSourcePath);
                 var listSource = JsonConvert.DeserializeObject<ListingSource>(listSourceString, JsonReadOptions);
                 
+                // Get existing RepoList or create empty one, so we can skip existing packages
+                var currentRepoListString = await GetAuthenticatedString(CurrentListingUrl);
+                var currentRepoList = (currentRepoListString == null)
+                    ? new List<IVRCPackage>()
+                    : JsonConvert.DeserializeObject<VRCRepoList>(currentRepoListString, JsonReadOptions).GetAll(); 
+
                 // Make collection for constructed packages
                 var packages = new List<VRCPackageManifest>();
                 
@@ -135,7 +144,12 @@ namespace VRC.PackageManagement.Automation
                         var discoveredPackages = await GetPackagesFromGitHubRepo(ownerSlashName);
                         if (discoveredPackages != null && discoveredPackages.Count > 0)
                         {
-                            packages.AddRange(discoveredPackages.ConvertAll(p => (VRCPackageManifest) p));
+                            packages.AddRange(
+                                discoveredPackages
+                                    .Where(p=>
+                                        currentRepoList.Exists(m=>m.Id == p.Id && m.Version == p.Version))
+                                    .ToList()
+                                    .ConvertAll(p => (VRCPackageManifest) p));
                         }
                     }
                 }
