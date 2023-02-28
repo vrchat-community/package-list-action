@@ -73,7 +73,7 @@ namespace VRC.PackageManagement.Automation
             var targetRepo = await client.Repository.Get(owner, name);
             if (targetRepo == null)
             {
-                Serilog.Log.Fatal($"Could not get remote repo {owner}/{name}.");
+                Assert.Fail($"Could not get remote repo {owner}/{name}.");
                 return null;
             }
             
@@ -173,14 +173,13 @@ namespace VRC.PackageManagement.Automation
                             {
                                 if (!headerResponse.IsSuccessStatusCode)
                                 {
-                                    Serilog.Log.Fatal($"Could not find valid zip file at {release.zipUrl}");
-                                    return;
+                                    Assert.Fail($"Could not find valid zip file at {release.zipUrl}");
                                 }
 
                                 var hash = GetStreamHashAsString(headerResponse.Content.ReadAsStream());
                                 if (string.IsNullOrWhiteSpace(hash))
                                 {
-                                    Serilog.Log.Fatal($"Could not calculate hash for zip");
+                                    Assert.Fail($"Could not calculate hash for zip");
                                 }
                                 manifest.vrchatVersion = hash; // Kludge for testing, need to add this field
                             }
