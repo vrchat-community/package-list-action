@@ -140,6 +140,7 @@ namespace VRC.PackageManagement.Automation
                     if (manifest == null)
                     {
                         Serilog.Log.Information($"Could not find manifest in zip file {url}, skipping.");
+                        continue;
                     }
                     
                     // Add package with updated manifest to collection
