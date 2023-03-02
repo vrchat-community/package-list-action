@@ -98,23 +98,24 @@ namespace VRC.PackageManagement.Automation
 
                 // Check if zipUrl exists and is valid
                 Serilog.Log.Information($"Looking for Release Zip for {release.Name}.");
-                ReleaseAsset zipAsset = release.Assets.FirstOrDefault(asset => asset.Name.EndsWith(".zip"));
-                if (zipAsset == default)
-                {
-                    Serilog.Log.Information($"Could not find release for {release.Name}, skipping.");
-                    continue;
-                }
-                
-                var manifest = await HashZipAndReturnManifest(zipAsset.BrowserDownloadUrl);
-                if (manifest == null)
-                {
-                    Assert.Fail($"Could not create updated manifest from zip file {zipAsset.BrowserDownloadUrl}");
-                }
-                
-                Serilog.Log.Information($"Found Release Zip {zipAsset.Name}: {zipAsset.Id}.");
 
-                // set contents of version object from retrieved manifest
-                packages.Add(manifest);
+                var zipAssets = release.Assets.Where(asset => asset.Name.EndsWith(".zip")).ToList();
+                Serilog.Log.Information($"Found {zipAssets.Count}");
+
+                // Check each zipAsset for a valid release
+                foreach (var zipAsset in zipAssets)
+                {
+                    var manifest = await HashZipAndReturnManifest(zipAsset.BrowserDownloadUrl);
+                    if (manifest == null)
+                    {
+                        Assert.Fail($"Could not create updated manifest from zip file {zipAsset.BrowserDownloadUrl}");
+                    }
+                
+                    Serilog.Log.Information($"Found Release Zip {zipAsset.Name}: {zipAsset.Id}.");
+
+                    // set contents of version object from retrieved manifest
+                    packages.Add(manifest);
+                }
             }
 
             return packages;
