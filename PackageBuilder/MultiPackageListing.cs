@@ -57,7 +57,7 @@ namespace VRC.PackageManagement.Automation
 
         static readonly AbsolutePath WebPageSourcePath = PackageListingSourceFolder / "Website";
 
-        private async Task<List<IVRCPackage>> GetPackagesFromGitHubRepo(string ownerSlashName)
+        private async Task<List<string>> GetReleaseZipUrlsFromGitHubRepo(string ownerSlashName)
         {
             // Split string into owner and repo, or skip if invalid.
             var parts = ownerSlashName.Split('/');
@@ -90,35 +90,14 @@ namespace VRC.PackageManagement.Automation
                 return null;
             }
 
-            var packages = new List<IVRCPackage>();
+            var result = new List<string>();
             
             foreach (Octokit.Release release in releases)
             {
-                Serilog.Log.Information($"Looking at {owner}/{name} release {release.Name}.");
-
-                // Check if zipUrl exists and is valid
-                Serilog.Log.Information($"Looking for Release Zip for {release.Name}.");
-
-                var zipAssets = release.Assets.Where(asset => asset.Name.EndsWith(".zip")).ToList();
-                Serilog.Log.Information($"Found {zipAssets.Count}");
-
-                // Check each zipAsset for a valid release
-                foreach (var zipAsset in zipAssets)
-                {
-                    var manifest = await HashZipAndReturnManifest(zipAsset.BrowserDownloadUrl);
-                    if (manifest == null)
-                    {
-                        Assert.Fail($"Could not create updated manifest from zip file {zipAsset.BrowserDownloadUrl}");
-                    }
-                
-                    Serilog.Log.Information($"Found Release Zip {zipAsset.Name}: {zipAsset.Id}.");
-
-                    // set contents of version object from retrieved manifest
-                    packages.Add(manifest);
-                }
+                result.AddRange(release.Assets.Where(asset => asset.Name.EndsWith(".zip")).Select(asset => asset.BrowserDownloadUrl));
             }
 
-            return packages;
+            return result;
         }
 
         Target BuildMultiPackageListing => _ => _
@@ -128,78 +107,44 @@ namespace VRC.PackageManagement.Automation
                 var listSourceString = File.ReadAllText(PackageListingSourcePath);
                 var listSource = JsonConvert.DeserializeObject<ListingSource>(listSourceString, JsonReadOptions);
                 
-                // Get existing RepoList or create empty one, so we can skip existing packages
+                // Get existing RepoList URLs or create empty one, so we can skip existing packages
                 var currentRepoListString = await GetAuthenticatedString(CurrentListingUrl);
-                var currentPackages = (currentRepoListString == null)
-                    ? new List<IVRCPackage>()
-                    : JsonConvert.DeserializeObject<VRCRepoList>(currentRepoListString, JsonReadOptions).GetAll(); 
+                var currentPackageUrls = currentRepoListString == null
+                    ? new List<string>()
+                    : JsonConvert.DeserializeObject<VRCRepoList>(currentRepoListString, JsonReadOptions).GetAll()
+                        .Select(package => package.Url).ToList();
 
                 // Make collection for constructed packages
                 var packages = new List<VRCPackageManifest>();
-                
+                var possibleReleaseUrls = new List<string>(listSource.packages.SelectMany(info => info.releases));
+
                 // Add GitHub repos if included
                 if (listSource.githubRepos != null && listSource.githubRepos.Count > 0)
                 {
                     foreach (string ownerSlashName in listSource.githubRepos)
                     {
-                        var discoveredPackages = await GetPackagesFromGitHubRepo(ownerSlashName);
-                        if (discoveredPackages != null && discoveredPackages.Count > 0)
-                        {
-                            packages.AddRange(
-                                discoveredPackages
-                                    .Where(p=>
-                                        currentPackages.Exists(m=>m.Id == p.Id && m.Version == p.Version))
-                                    .ToList()
-                                    .ConvertAll(p => (VRCPackageManifest) p));
-                        }
+                        possibleReleaseUrls.AddRange(await GetReleaseZipUrlsFromGitHubRepo(ownerSlashName));
                     }
                 }
 
-                // Go through each package 
-                if (listSource.packages != null)
+                foreach (string url in possibleReleaseUrls)
                 {
-                    foreach (var info in listSource.packages)
+                    Serilog.Log.Information($"Looking at {url}");
+                    if (currentPackageUrls.Contains(url))
                     {
-                        Serilog.Log.Information($"Looking at {info.id} with {info.releases.Count} releases.");
-                    
-                        // Just used in logging
-                        int releaseIndex = 0;
-                    
-                        // Go through each release in each package
-                        foreach (var release in info.releases)
-                        {
-                            releaseIndex++;
-                        
-                            // Skip packages already in listing
-                            if (currentPackages.Exists(m => m.Id == info.id && m.Version == release.version))
-                            {
-                                Serilog.Log.Information($"Listing already contains {info.id} {release.version}, skipping.");
-                                continue;
-                            }
-                            
-                            Serilog.Log.Information($"Looking at {info.id} {release.version}.");
-
-                            // Check if zipUrl exists and is valid
-                            Serilog.Log.Information($"Checking Zip URL {release.url}.");
-
-                            var manifest = await HashZipAndReturnManifest(release.url);
-                            if (manifest == null)
-                            {
-                                Assert.Fail($"Could not create updated manifest from zip file {release}");
-                            }
-
-                            // Ensure the Id and Version from the extracted package match the info supplied in the source 
-                            if (manifest.Id != info.id)
-                                Assert.Fail($"The manifest id in the zip is {manifest.Id}, which does not match the supplied id {info.id}, cannot publish this package.");
-                            
-                            if (manifest.Version != release.version)
-                                Assert.Fail($"The manifest version in the zip is {manifest.Version}, which does not match the supplied id {release.version}, cannot publish this package.");
-
-                            // set contents of version object from retrieved manifest
-                            Serilog.Log.Information($"Zip file exists. Adding package and moving on...");
-                            packages.Add(manifest);
-                        }
+                        Serilog.Log.Information($"Current listing already contains {url}, skipping");
+                        continue;
                     }
+                    
+                    var manifest = await HashZipAndReturnManifest(url);
+                    if (manifest == null)
+                    {
+                        Assert.Fail($"Could not create updated manifest from zip file {url}");
+                    }
+                    
+                    // Add package with updated manifest to collection
+                    Serilog.Log.Information($"Found {manifest.Id} ({manifest.name}) {manifest.Version}, adding to listing.");
+                    packages.Add(manifest);
                 }
 
                 // Copy listing-source.json to new Json Object
