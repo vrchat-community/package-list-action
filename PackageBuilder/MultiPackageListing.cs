@@ -250,8 +250,11 @@ namespace VRC.PackageManagement.Automation
                     Assert.Fail($"Could not find valid zip file at {url}");
                 }
 
+                // Get manifest or return null
                 var bytes = await response.Content.ReadAsByteArrayAsync();
                 var manifestBytes = GetFileFromZip(bytes, PackageManifestFilename);
+                if (manifestBytes == null) return null;
+                
                 var manifestString = Encoding.UTF8.GetString(manifestBytes);
                 var manifest = VRCPackageManifest.FromJson(manifestString);
                 var hash = GetHashForBytes(bytes);
