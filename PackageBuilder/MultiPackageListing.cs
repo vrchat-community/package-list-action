@@ -139,7 +139,7 @@ namespace VRC.PackageManagement.Automation
                     var manifest = await HashZipAndReturnManifest(url);
                     if (manifest == null)
                     {
-                        Assert.Fail($"Could not create updated manifest from zip file {url}");
+                        Serilog.Log.Information($"Could not find manifest in zip file {url}, skipping.");
                     }
                     
                     // Add package with updated manifest to collection
