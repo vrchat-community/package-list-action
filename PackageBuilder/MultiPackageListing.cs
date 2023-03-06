@@ -259,7 +259,7 @@ namespace VRC.PackageManagement.Automation
                 var manifestString = Encoding.UTF8.GetString(manifestBytes);
                 var manifest = VRCPackageManifest.FromJson(manifestString);
                 var hash = GetHashForBytes(bytes);
-                manifest.vrchatVersion = hash; // putting the hash in here for now
+                manifest.zipSHA256 = hash; // putting the hash in here for now
                 // Point manifest towards release
                 manifest.url = url;
                 return manifest;
