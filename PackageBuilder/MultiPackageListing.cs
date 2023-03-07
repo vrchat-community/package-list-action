@@ -127,6 +127,7 @@ namespace VRC.PackageManagement.Automation
                     }
                 }
 
+                // Add each release url to the packages collection if it's not already in the listing, and its zip is valid
                 foreach (string url in possibleReleaseUrls)
                 {
                     Serilog.Log.Information($"Looking at {url}");
