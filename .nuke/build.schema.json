@@ -18,6 +18,10 @@
           "type": "boolean",
           "description": "Indicates to continue a previously failed build attempt"
         },
+        "CurrentListingUrl": {
+          "type": "string",
+          "description": "Path to existing index.json file, typically https://{owner}.github.io/{repo}/index.json"
+        },
         "CurrentPackageName": {
           "type": "string",
           "description": "PackageName"

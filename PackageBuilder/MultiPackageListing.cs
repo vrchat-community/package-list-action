@@ -49,13 +49,13 @@ namespace VRC.PackageManagement.Automation
         
         // assumes that "template-package-listings" repo is checked out in sibling dir for local testing, can be overriden
         [Parameter("Path to Target Listing Root")] 
-        static AbsolutePath PackageListingSourceFolder = IsServerBuild
+        AbsolutePath PackageListingSourceFolder = IsServerBuild
             ? RootDirectory.Parent
             : RootDirectory.Parent / "template-package-listing";
         
-        static AbsolutePath PackageListingSourcePath = PackageListingSourceFolder / PackageListingSourceFilename;
+        AbsolutePath PackageListingSourcePath => PackageListingSourceFolder / PackageListingSourceFilename;
 
-        static readonly AbsolutePath WebPageSourcePath = PackageListingSourceFolder / "Website";
+        AbsolutePath WebPageSourcePath => PackageListingSourceFolder / "Website";
 
         private async Task<List<string>> GetReleaseZipUrlsFromGitHubRepo(string ownerSlashName)
         {
@@ -108,7 +108,7 @@ namespace VRC.PackageManagement.Automation
                 var listSource = JsonConvert.DeserializeObject<ListingSource>(listSourceString, JsonReadOptions);
                 
                 // Get existing RepoList URLs or create empty one, so we can skip existing packages
-                var currentRepoListString = await GetAuthenticatedString(CurrentListingUrl);
+                var currentRepoListString = IsServerBuild ? await GetAuthenticatedString(CurrentListingUrl) : null;
                 var currentPackageUrls = currentRepoListString == null
                     ? new List<string>()
                     : JsonConvert.DeserializeObject<VRCRepoList>(currentRepoListString, JsonReadOptions).GetAll()
