@@ -135,11 +135,18 @@ class Build : NukeBuild
             foreach (var release in releases)
             {
                 // Release must have package.json and .zip file, or else it will throw an exception here
-                var manifest = await GetManifestFromRelease(release);
-                if (manifest == null)
+                try
                 {
-                    Serilog.Log.Error($"Could not get manifest from {release.Name}");
-                    return;
+                    var manifest = await GetManifestFromRelease(release);
+                    if (manifest == null)
+                    {
+                        Serilog.Log.Error($"Could not get manifest from {release.Name}");
+                        continue;
+                    }
+                }
+                catch (Exception e)
+                {
+                    continue;
                 }
                 
                 ReleaseAsset zipAsset = release.Assets.First(asset => asset.Name.EndsWith(".zip"));
