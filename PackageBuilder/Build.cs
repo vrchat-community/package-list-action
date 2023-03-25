@@ -143,17 +143,17 @@ class Build : NukeBuild
                         Serilog.Log.Error($"Could not get manifest from {release.Name}");
                         continue;
                     }
+
+                    ReleaseAsset zipAsset = release.Assets.First(asset => asset.Name.EndsWith(".zip"));
+
+                    // Set url to .zip asset, add latest package version
+                    manifest.url = zipAsset.BrowserDownloadUrl;
+                    packages.Add(manifest);
                 }
                 catch (Exception e)
                 {
                     continue;
                 }
-                
-                ReleaseAsset zipAsset = release.Assets.First(asset => asset.Name.EndsWith(".zip"));
-
-                // Set url to .zip asset, add latest package version
-                manifest.url = zipAsset.BrowserDownloadUrl;
-                packages.Add(manifest);
             }
 
             var latestRelease = await GetLatestRelease(repoName);
