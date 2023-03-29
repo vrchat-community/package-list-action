@@ -135,6 +135,7 @@ namespace VRC.PackageManagement.Automation
                 var repoList = new VRCRepoList(packages)
                 {
                     name = listSource.name,
+                    id = listSource.id,
                     author = listSource.author.name,
                     url = listSource.url
                 };
