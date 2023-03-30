@@ -94,7 +94,11 @@ namespace VRC.PackageManagement.Automation
                 },
                 url = CurrentListingUrl,
                 description = $"Listing for {manifest.displayName}",
-                bannerUrl = "banner.png"
+                bannerUrl = "banner.png",
+                githubRepos = new List<string>()
+                {
+                    GitHubActions.Repository
+                }
             };
             return result;
         }
@@ -144,7 +148,7 @@ namespace VRC.PackageManagement.Automation
 
                 // Make collection for constructed packages
                 var packages = new List<VRCPackageManifest>();
-                var possibleReleaseUrls = new List<string>(listSource.packages.SelectMany(info => info.releases));
+                var possibleReleaseUrls = new List<string>(listSource.packages?.SelectMany(info => info.releases));
 
                 // Add GitHub repos if included
                 if (listSource.githubRepos != null && listSource.githubRepos.Count > 0)
