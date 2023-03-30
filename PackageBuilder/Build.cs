@@ -148,7 +148,15 @@ namespace VRC.PackageManagement.Automation
 
                 // Make collection for constructed packages
                 var packages = new List<VRCPackageManifest>();
-                var possibleReleaseUrls = new List<string>(listSource.packages?.SelectMany(info => info.releases));
+                var possibleReleaseUrls = new List<string>();
+                
+                // Add packages from listing source if included
+                if (listSource.packages != null)
+                {
+                    possibleReleaseUrls.AddRange(
+                        listSource.packages?.SelectMany(info => info.releases)
+                    );
+                }
 
                 // Add GitHub repos if included
                 if (listSource.githubRepos != null && listSource.githubRepos.Count > 0)
