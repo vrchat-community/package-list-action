@@ -262,12 +262,15 @@ namespace VRC.PackageManagement.Automation
                 var rendered = Scriban.Template.Parse(indexTemplateContent).Render(
                     new { listingInfo, packages = formattedPackages }, member => member.Name
                 );
+                
+                Serilog.Log.Information($"rendered: {rendered}");
 
                 File.WriteAllText(indexWritePath, rendered);
 
                 var appJsRendered = Scriban.Template.Parse(File.ReadAllText(appReadPath)).Render(
                     new { listingInfo, packages = formattedPackages }, member => member.Name
                 );
+                Serilog.Log.Information($"appJsRendered: {appJsRendered}");
                 File.WriteAllText(indexAppWritePath, appJsRendered);
 
                 if (!IsServerBuild) {
