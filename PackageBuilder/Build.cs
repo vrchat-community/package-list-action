@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,9 +13,9 @@ using Nuke.Common;
 using Nuke.Common.CI.GitHubActions;
 using Nuke.Common.IO;
 using Octokit;
-using VRC.PackageManagement.Automation.Multi;
 using VRC.PackageManagement.Core.Types.Packages;
 using ProductHeaderValue = Octokit.ProductHeaderValue;
+using ListingSource = VRC.PackageManagement.Automation.Multi.ListingSource;
 
 namespace VRC.PackageManagement.Automation
 {
@@ -51,13 +52,17 @@ namespace VRC.PackageManagement.Automation
         AbsolutePath PackageListingSourceFolder = IsServerBuild
             ? RootDirectory.Parent
             : RootDirectory.Parent / "template-package-listing";
-        
-        AbsolutePath PackageListingSourcePath => PackageListingSourceFolder / PackageListingSourceFilename;
-        AbsolutePath WebPageSourcePath => PackageListingSourceFolder / "Website";
 
         [Parameter("Path to existing index.json file, typically https://{owner}.github.io/{repo}/index.json")]
         string CurrentListingUrl =>
             $"https://{GitHubActions.RepositoryOwner}.github.io/{GitHubActions.Repository.Split('/')[1]}/{PackageListingPublishFilename}";
+        
+        // assumes that "template-package" repo is checked out in sibling dir to this repo, can be overridden
+        [Parameter("Path to Target Package")] 
+        AbsolutePath LocalTestPackagesPath => RootDirectory.Parent / "template-package"  / "Packages";
+        
+        AbsolutePath PackageListingSourcePath => PackageListingSourceFolder / PackageListingSourceFilename;
+        AbsolutePath WebPageSourcePath => PackageListingSourceFolder / "Website";
 
         #region Methods wrapped for GitHub / Local Parity
 
@@ -74,13 +79,55 @@ namespace VRC.PackageManagement.Automation
         }
 
         #endregion
+
+        ListingSource MakeListingSourceFromManifest(VRCPackageManifest manifest)
+        {
+            var result = new ListingSource()
+            {
+                name = $"{manifest.displayName} Listing",
+                id = $"{manifest.name}.listing",
+                author = new VRC.PackageManagement.Automation.Multi.Author()
+                {
+                    name = manifest.author.name ?? "",
+                    url = manifest.author.url ?? "",
+                    email = manifest.author.email ?? ""
+                },
+                url = CurrentListingUrl,
+                description = $"Listing for {manifest.displayName}",
+                bannerUrl = "banner.png"
+            };
+            return result;
+        }
         
         Target BuildRepoListing => _ => _
             .Executes(async () =>
             {
-                // Get listing source
-                var listSourceString = File.ReadAllText(PackageListingSourcePath);
-                var listSource = JsonConvert.DeserializeObject<ListingSource>(listSourceString, JsonReadOptions);
+                ListingSource listSource;
+                
+                if (!FileSystemTasks.FileExists(PackageListingSourcePath))
+                {
+                    AbsolutePath packagePath = RootDirectory.Parent / "Packages"  / CurrentPackageName  / PackageManifestFilename;
+                    if (!FileSystemTasks.FileExists(packagePath))
+                    {
+                        Serilog.Log.Error($"Could not find Listing Source at {PackageListingSourcePath} or Package Manifest at {packagePath}, you need at least one of them.");
+                        return;
+                    }
+                    
+                    // Deserialize manifest from packagePath
+                    var manifest = JsonConvert.DeserializeObject<VRCPackageManifest>(File.ReadAllText(packagePath), JsonReadOptions);
+                    listSource = MakeListingSourceFromManifest(manifest);
+                    if (listSource == null)
+                    {
+                        Serilog.Log.Error($"Could not create listing source from manifest.");
+                        return;
+                    }
+                }
+                else
+                {
+                    // Get listing source
+                    var listSourceString = File.ReadAllText(PackageListingSourcePath);
+                    listSource = JsonConvert.DeserializeObject<ListingSource>(listSourceString, JsonReadOptions);
+                }
 
                 if (string.IsNullOrWhiteSpace(listSource.id))
                 {
@@ -212,6 +259,24 @@ namespace VRC.PackageManagement.Automation
                 
                 Serilog.Log.Information($"Saved Listing to {savePath}.");
             });
+
+        GitHubClient _client;
+        GitHubClient Client
+        {
+            get
+            {
+                if (_client == null)
+                {
+                    _client = new(new ProductHeaderValue("VRChat-Package-Manager-Automation"));
+                    if (IsServerBuild)
+                    {
+                        _client.Credentials = new Credentials(GitHubActions.Token);
+                    }
+                }
+
+                return _client;
+            }
+        }
         
         async Task<List<string>> GetReleaseZipUrlsFromGitHubRepo(string ownerSlashName)
         {
@@ -224,14 +289,8 @@ namespace VRC.PackageManagement.Automation
             }
             string owner = parts[0];
             string name = parts[1];
-            
-            GitHubClient client = new(new ProductHeaderValue("VRChat-Package-Manager-Automation"));
-            if (IsServerBuild)
-            {
-                client.Credentials = new Credentials(GitHubActions.Token);
-            }
-            
-            var targetRepo = await client.Repository.Get(owner, name);
+
+            var targetRepo = await Client.Repository.Get(owner, name);
             if (targetRepo == null)
             {
                 Assert.Fail($"Could not get remote repo {owner}/{name}.");
@@ -239,7 +298,7 @@ namespace VRC.PackageManagement.Automation
             }
             
             // Go through each release
-            var releases = await client.Repository.Release.GetAll(owner, name);
+            var releases = await Client.Repository.Release.GetAll(owner, name);
             if (releases.Count == 0)
             {
                 Serilog.Log.Information($"Found no releases for {owner}/{name}");

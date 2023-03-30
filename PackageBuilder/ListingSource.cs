@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using VRC.PackageManagement.Core.Types.Packages;
 
 namespace VRC.PackageManagement.Automation.Multi
 {
