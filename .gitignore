@@ -2,3 +2,5 @@
 temp/
 bin/
 obj/
+.vscode/
+docs/

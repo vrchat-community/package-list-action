@@ -6,17 +6,13 @@
     "build": {
       "type": "object",
       "properties": {
-        "Configuration": {
-          "type": "string",
-          "description": "Configuration to build - Default is 'Debug' (local) or 'Release' (server)",
-          "enum": [
-            "Debug",
-            "Release"
-          ]
-        },
         "Continue": {
           "type": "boolean",
           "description": "Indicates to continue a previously failed build attempt"
+        },
+        "CurrentListingUrl": {
+          "type": "string",
+          "description": "Path to existing index.json file, typically https://{owner}.github.io/{repo}/index.json"
         },
         "CurrentPackageName": {
           "type": "string",
@@ -51,13 +47,17 @@
           "type": "string",
           "description": "Directory to save index into"
         },
-        "LocalTestPackagesPath": {
-          "type": "string",
-          "description": "Path to Target Package"
-        },
         "NoLogo": {
           "type": "boolean",
           "description": "Disables displaying the NUKE logo"
+        },
+        "PackageListingSourceFilename": {
+          "type": "string",
+          "description": "Filename of source json"
+        },
+        "PackageListingSourceFolder": {
+          "type": "string",
+          "description": "Path to Target Listing Root"
         },
         "Partition": {
           "type": "string",
@@ -84,8 +84,8 @@
           "items": {
             "type": "string",
             "enum": [
-              "BuildRepoListing",
-              "RebuildHomePage"
+              "BuildMultiPackageListing",
+              "BuildRepoListing"
             ]
           }
         },
@@ -95,8 +95,8 @@
           "items": {
             "type": "string",
             "enum": [
-              "BuildRepoListing",
-              "RebuildHomePage"
+              "BuildMultiPackageListing",
+              "BuildRepoListing"
             ]
           }
         },
