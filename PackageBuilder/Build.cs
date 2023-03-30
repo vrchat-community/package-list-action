@@ -186,6 +186,7 @@ namespace VRC.PackageManagement.Automation
                     
                     // Add package with updated manifest to collection
                     Serilog.Log.Information($"Found {manifest.Id} ({manifest.name}) {manifest.Version}, adding to listing.");
+                    Serilog.Log.Information($"Full manifest: {JsonConvert.SerializeObject(manifest, JsonWriteOptions)}");
                     packages.Add(manifest);
                 }
 
