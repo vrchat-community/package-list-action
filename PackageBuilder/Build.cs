@@ -186,7 +186,6 @@ namespace VRC.PackageManagement.Automation
                     
                     // Add package with updated manifest to collection
                     Serilog.Log.Information($"Found {manifest.Id} ({manifest.name}) {manifest.Version}, adding to listing.");
-                    Serilog.Log.Information($"Full manifest: {JsonConvert.SerializeObject(manifest, JsonWriteOptions)}");
                     packages.Add(manifest);
                 }
 
@@ -232,8 +231,11 @@ namespace VRC.PackageManagement.Automation
                     BannerImage = !string.IsNullOrEmpty(listSource.bannerUrl),
                     BannerImageUrl = listSource.bannerUrl,
                 };
+                
+                Serilog.Log.Information($"Made listingInfo {JsonConvert.SerializeObject(listingInfo, JsonWriteOptions)}");
 
                 var latestPackages = packages.OrderByDescending(p => p.Version).DistinctBy(p => p.Id).ToList();
+                Serilog.Log.Information($"LatestPackages: {JsonConvert.SerializeObject(latestPackages, JsonWriteOptions)}");
                 var formattedPackages = latestPackages.ConvertAll(p => new {
                     Name = p.Id,
                     Author = new {
@@ -254,6 +256,8 @@ namespace VRC.PackageManagement.Automation
                         }
                     ).ToList(),
                 });
+                
+                Serilog.Log.Information($"formatted packages: {JsonConvert.SerializeObject(formattedPackages, JsonWriteOptions)}");
 
                 var rendered = Scriban.Template.Parse(indexTemplateContent).Render(
                     new { listingInfo, packages = formattedPackages }, member => member.Name
