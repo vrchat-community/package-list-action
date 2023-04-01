@@ -364,13 +364,14 @@ namespace VRC.PackageManagement.Automation
                 var manifest = VRCPackageManifest.FromJson(manifestString);
                 var hash = GetHashForBytes(bytes);
                 manifest.zipSHA256 = hash; // putting the hash in here for now
-                // Point manifest towards release
-                manifest.url = url;
 
                 // Workaround for bug of vpm-resolver
                 // see: https://github.com/vrchat-community/creator-companion/issues/226
                 if (!url.Contains('?'))
-                    url = url + '?';
+                    url += '?';
+
+                // Point manifest towards release
+                manifest.url = url;
 
                 return manifest;
             }
