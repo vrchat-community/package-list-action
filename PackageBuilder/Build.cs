@@ -88,9 +88,9 @@ namespace VRC.PackageManagement.Automation
                 id = $"{manifest.name}.listing",
                 author = new VRC.PackageManagement.Automation.Multi.Author()
                 {
-                    name = manifest.author.name ?? "",
-                    url = manifest.author.url ?? "",
-                    email = manifest.author.email ?? ""
+                    name = manifest.author?.name ?? "",
+                    url = manifest.author?.url ?? "",
+                    email = manifest.author?.email ?? ""
                 },
                 url = CurrentListingUrl,
                 description = $"Listing for {manifest.displayName}",
