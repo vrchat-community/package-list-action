@@ -60,6 +60,9 @@ namespace VRC.PackageManagement.Automation
         // assumes that "template-package" repo is checked out in sibling dir to this repo, can be overridden
         [Parameter("Path to Target Package")] 
         AbsolutePath LocalTestPackagesPath => RootDirectory.Parent / "template-package"  / "Packages";
+
+        [Parameter("Suffix to append to the listing package name and ID")]
+        string PackageListingSuffix = "Listing";
         
         AbsolutePath PackageListingSourcePath => PackageListingSourceFolder / PackageListingSourceFilename;
         AbsolutePath WebPageSourcePath => PackageListingSourceFolder / "Website";
@@ -84,8 +87,12 @@ namespace VRC.PackageManagement.Automation
         {
             var result = new ListingSource()
             {
-                name = $"{manifest.displayName} Listing",
-                id = $"{manifest.name}.listing",
+                name = PackageListingSuffix != ""
+                    ? $"{manifest.displayName} {PackageListingSuffix}"
+                    : $"{manifest.displayName}",
+                id = PackageListingSuffix != ""
+                    ? $"{manifest.name}.{PackageListingSuffix.ToLower()}"
+                    : $"{manifest.name}",
                 author = new VRC.PackageManagement.Automation.Multi.Author()
                 {
                     name = manifest.author.name ?? "",
