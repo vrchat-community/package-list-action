@@ -53,9 +53,15 @@ namespace VRC.PackageManagement.Automation
             ? RootDirectory.Parent
             : RootDirectory.Parent / "template-package-listing";
 
+        private string _currentListingUrl;
         [Parameter("Path to existing index.json file, typically https://{owner}.github.io/{repo}/index.json")]
-        string CurrentListingUrl =>
-            $"https://{GitHubActions.RepositoryOwner}.github.io/{GitHubActions.Repository.Split('/')[1]}/{PackageListingPublishFilename}";
+        public string CurrentListingUrl
+        {
+            get => _currentListingUrl ?? 
+                $"https://{GitHubActions.RepositoryOwner}.github.io/{GitHubActions.Repository.Split('/')[1]}/{PackageListingPublishFilename}";
+
+            set => _currentListingUrl = value;
+        }
         
         // assumes that "template-package" repo is checked out in sibling dir to this repo, can be overridden
         [Parameter("Path to Target Package")] 
