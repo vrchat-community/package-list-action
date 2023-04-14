@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Nuke.Common;
 using Nuke.Common.IO;
@@ -72,10 +73,14 @@ partial class Build
             // Match all the assets we need
             Matcher assetMatcher = new Matcher();
             assetMatcher.AddIncludePatterns(assetPattern);
+            Log.Information($"Added includePattern {assetPattern}");
             assetMatcher.AddExcludePatterns(excludePattern);
+            Log.Information($"Added excludePattern {excludePattern}");
             assetMatcher.AddExclude(unityPackageExportOutput);
+            Log.Information($"Added exclude {unityPackageExportOutput}");
 
             var matchedAssets = assetMatcher.GetResultsInFullPath(unityPackageExportSource);
+            Log.Information($"Found {matchedAssets.Count()} matched assets");
             await packer.AddAssetsAsync(matchedAssets);
 
             if (!skipDep)
