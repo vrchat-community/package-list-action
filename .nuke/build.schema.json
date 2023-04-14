@@ -6,6 +6,17 @@
     "build": {
       "type": "object",
       "properties": {
+        "assetPattern": {
+          "type": "array",
+          "description": "Adds an asset to the pack. Supports glob matching",
+          "items": {
+            "type": "string"
+          }
+        },
+        "assetRoot": {
+          "type": "string",
+          "description": "Sets the root directory for the assets. Used in dependency analysis to only check files that could be potentially included"
+        },
         "Continue": {
           "type": "boolean",
           "description": "Indicates to continue a previously failed build attempt"
@@ -17,6 +28,13 @@
         "CurrentPackageName": {
           "type": "string",
           "description": "PackageName"
+        },
+        "excludePattern": {
+          "type": "array",
+          "description": "Adds an asset to the pack. Supports glob matching",
+          "items": {
+            "type": "string"
+          }
         },
         "Help": {
           "type": "boolean",
@@ -46,6 +64,10 @@
         "ListPublishDirectory": {
           "type": "string",
           "description": "Directory to save index into"
+        },
+        "LocalTestPackagesPath": {
+          "type": "string",
+          "description": "Path to Target Package"
         },
         "NoLogo": {
           "type": "boolean",
@@ -85,9 +107,14 @@
             "type": "string",
             "enum": [
               "BuildMultiPackageListing",
-              "BuildRepoListing"
+              "BuildRepoListing",
+              "BuildUnityPackage"
             ]
           }
+        },
+        "skipDep": {
+          "type": "boolean",
+          "description": "Skips dependency analysis. Disabling this feature may result in missing assets in your packages"
         },
         "Target": {
           "type": "array",
@@ -96,9 +123,18 @@
             "type": "string",
             "enum": [
               "BuildMultiPackageListing",
-              "BuildRepoListing"
+              "BuildRepoListing",
+              "BuildUnityPackage"
             ]
           }
+        },
+        "unityPackageExportOutput": {
+          "type": "string",
+          "description": "Output .unitypackage file"
+        },
+        "unityPackageExportSource": {
+          "type": "string",
+          "description": "Unity Project Directory"
         },
         "Verbosity": {
           "type": "string",
