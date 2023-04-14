@@ -63,6 +63,8 @@ partial class Build
         {
             Log.Information($"Packing {unityPackageExportSource}");
             
+            PrintDirectoryTree(unityPackageExportSource/"Packages"/"com.vrchat.ClientSim");
+            
             // Make the output file (touch it) so we can exclude
             await File.WriteAllBytesAsync(unityPackageExportOutput, new byte[0]);
 
