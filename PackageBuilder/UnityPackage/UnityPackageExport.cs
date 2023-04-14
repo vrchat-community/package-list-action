@@ -65,8 +65,6 @@ partial class Build
         {
             Log.Information($"Packing {unityPackageExportSource}");
             
-            PrintDirectoryTree(unityPackageExportSource/"Packages"/"com.vrchat.ClientSim");
-            
             // Make the output file (touch it) so we can exclude
             await File.WriteAllBytesAsync(unityPackageExportOutput, new byte[0]);
 
@@ -92,7 +90,7 @@ partial class Build
             var matchedAssets = assetMatcher.GetResultsInFullPath(unityPackageExportSource);
             
             var newMatcher = new Matcher();
-            newMatcher.AddInclude("**/*.*");
+            newMatcher.AddInclude("Packages/com.vrchat.ClientSim/**/*.*");
             var matched2 = newMatcher.GetResultsInFullPath(unityPackageExportSource);
             Log.Information($"NewMatcher found {matched2.Count()} files.");
                 
