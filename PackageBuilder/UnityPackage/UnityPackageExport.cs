@@ -25,7 +25,7 @@ partial class Build
     string[] assetPattern = new string[]{"**.*"};
 
     [Parameter("Adds an asset to the pack. Supports glob matching.", Separator = " ")]
-    string[] excludePattern = new string[] { "Library/**.*", "**/.*" };
+    string[] excludePattern = new string[] { "Library/**.*"};
     
     [Parameter("Skips dependency analysis. Disabling this feature may result in missing assets in your packages.")]
     bool skipDep = false;
