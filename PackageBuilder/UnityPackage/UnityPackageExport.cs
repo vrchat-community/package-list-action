@@ -79,11 +79,11 @@ partial class Build
             {
                 Log.Information($"Added includePattern {s}");
             }
-            assetMatcher.AddExcludePatterns(excludePattern);
-            foreach (string s in excludePattern)
-            {
-                Log.Information($"Added excludePattern {s}");
-            }
+            // assetMatcher.AddExcludePatterns(excludePattern);
+            // foreach (string s in excludePattern)
+            // {
+            //     Log.Information($"Added excludePattern {s}");
+            // }
             assetMatcher.AddExclude(unityPackageExportOutput);
             Log.Information($"Added exclude {unityPackageExportOutput}");
 
