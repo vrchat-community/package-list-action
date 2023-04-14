@@ -73,9 +73,15 @@ partial class Build
             // Match all the assets we need
             Matcher assetMatcher = new Matcher();
             assetMatcher.AddIncludePatterns(assetPattern);
-            Log.Information($"Added includePattern {assetPattern}");
+            foreach (string s in assetPattern)
+            {
+                Log.Information($"Added includePattern {s}");
+            }
             assetMatcher.AddExcludePatterns(excludePattern);
-            Log.Information($"Added excludePattern {excludePattern}");
+            foreach (string s in excludePattern)
+            {
+                Log.Information($"Added excludePattern {s}");
+            }
             assetMatcher.AddExclude(unityPackageExportOutput);
             Log.Information($"Added exclude {unityPackageExportOutput}");
 
