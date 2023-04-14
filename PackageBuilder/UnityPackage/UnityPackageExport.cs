@@ -31,6 +31,29 @@ partial class Build
     
     [Parameter("Sets the root directory for the assets. Used in dependency analysis to only check files that could be potentially included.")]
     string assetRoot = "Assets";
+    
+    static void PrintDirectoryTree(string directoryPath, string indent = "")
+    {
+        DirectoryInfo directoryInfo = new DirectoryInfo(directoryPath);
+
+        if (!directoryInfo.Exists)
+        {
+            Log.Information($"Directory \"{directoryPath}\" not found.");
+            return;
+        }
+
+        Log.Information($"{indent}+ {directoryInfo.Name}");
+
+        foreach (DirectoryInfo subDirectory in directoryInfo.GetDirectories())
+        {
+            PrintDirectoryTree(subDirectory.FullName, indent + "  ");
+        }
+
+        foreach (FileInfo file in directoryInfo.GetFiles())
+        {
+            Log.Information($"{indent}  - {file.Name}");
+        }
+    }
 
     Target BuildUnityPackage => _ => _
         .Requires(() => unityPackageExportSource)
@@ -38,6 +61,8 @@ partial class Build
         .Executes( async () =>
         {
             Log.Information($"Packing {unityPackageExportSource}");
+            
+            PrintDirectoryTree(unityPackageExportSource);
             
             // Make the output file (touch it) so we can exclude
             await File.WriteAllBytesAsync(unityPackageExportOutput, new byte[0]);
