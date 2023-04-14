@@ -68,7 +68,7 @@ partial class Build
             await File.WriteAllBytesAsync(unityPackageExportOutput, new byte[0]);
 
             Stopwatch timer = Stopwatch.StartNew();
-            using DependencyAnalyser analyser = !skipDep ? await DependencyAnalyser.CreateAsync(Path.Combine(unityPackageExportSource, assetRoot), excludePattern) : null;
+            using DependencyAnalyser analyser = !skipDep ? await DependencyAnalyser.CreateAsync(unityPackageExportSource / assetRoot, excludePattern) : null;
             using Packer packer = new Packer(unityPackageExportSource, unityPackageExportOutput);
 
             // Match all the assets we need
