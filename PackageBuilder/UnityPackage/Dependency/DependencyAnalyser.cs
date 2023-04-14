@@ -43,8 +43,6 @@ namespace UnityPackageExporter.Dependency
         {
             DependencyAnalyser analyser = new DependencyAnalyser(rootPath);
             
-            Log.Information($"DependencyAnalyser is Checking for assets in {rootPath}");
-
             // Build file maps. We dont build code map unless we need it (we might not).
             Matcher assetMatcher = new Matcher();
             assetMatcher.AddIncludePatterns(assetPatterns);

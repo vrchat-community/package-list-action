@@ -1,10 +1,7 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using GlobExpressions;
 using Microsoft.Extensions.FileSystemGlobbing;
-// using Microsoft.Extensions.FileSystemGlobbing;
 using Nuke.Common;
 using Nuke.Common.IO;
 using Serilog;
@@ -34,29 +31,6 @@ partial class Build
     
     [Parameter("Sets the root directory for the assets. Used in dependency analysis to only check files that could be potentially included.")]
     string assetRoot = "Assets";
-    
-    static void PrintDirectoryTree(string directoryPath, string indent = "")
-    {
-        DirectoryInfo directoryInfo = new DirectoryInfo(directoryPath);
-
-        if (!directoryInfo.Exists)
-        {
-            Log.Information($"Directory \"{directoryPath}\" not found.");
-            return;
-        }
-
-        Log.Information($"{indent}+ {directoryInfo.Name}");
-
-        foreach (DirectoryInfo subDirectory in directoryInfo.GetDirectories())
-        {
-            PrintDirectoryTree(subDirectory.FullName, indent + "  ");
-        }
-
-        foreach (FileInfo file in directoryInfo.GetFiles())
-        {
-            Log.Information($"{indent}  - {file.Name}");
-        }
-    }
 
     Target BuildUnityPackage => _ => _
         .Requires(() => unityPackageExportSource)
@@ -75,25 +49,10 @@ partial class Build
             // Match all the assets we need
             Matcher assetMatcher = new Matcher();
             assetMatcher.AddIncludePatterns(assetPattern);
-            foreach (string s in assetPattern)
-            {
-                Log.Information($"Added includePattern {s}");
-            }
             assetMatcher.AddExcludePatterns(excludePattern);
-            foreach (string s in excludePattern)
-            {
-                Log.Information($"Added excludePattern {s}");
-            }
             assetMatcher.AddExclude(unityPackageExportOutput);
-            Log.Information($"Added exclude {unityPackageExportOutput}");
             
             var matchedAssets = assetMatcher.GetResultsInFullPath(unityPackageExportSource);
-            
-            var newMatcher = new Matcher();
-            newMatcher.AddInclude("Packages/com.vrchat.ClientSim/**/*.*");
-            var matched2 = newMatcher.GetResultsInFullPath(unityPackageExportSource);
-            Log.Information($"NewMatcher found {matched2.Count()} files.");
-                
 
             Assert.True(matchedAssets.Count() > 0, "No assets matched the pattern. Please check your pattern and try again.");
             
@@ -112,17 +71,4 @@ partial class Build
             Log.Information($"Finished Packing in {timer.ElapsedMilliseconds}ms to {packer.OutputPath}");
             await packer.FlushAsync();
         });
-    
-    // Helper method to check if any pattern in the given array matches the provided path
-    static bool AnyPatternMatches(string path, string[] patterns)
-    {
-        foreach (var pattern in patterns)
-        {
-            if (Glob.IsMatch(path, pattern))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
 }
