@@ -177,7 +177,7 @@ namespace VRC.PackageManagement.Automation
                         continue;
                     }
                     
-                    var manifest = await HashZipAndReturnManifest(url);
+                    var manifest = await HashZipAndReturnManifest(url, listSource.workaroundForResolverBug);
                     if (manifest == null)
                     {
                         Serilog.Log.Information($"Could not find manifest in zip file {url}, skipping.");
@@ -346,7 +346,7 @@ namespace VRC.PackageManagement.Automation
             return result;
         }
 
-        async Task<VRCPackageManifest> HashZipAndReturnManifest(string url)
+        async Task<VRCPackageManifest> HashZipAndReturnManifest(string url, bool workaroundForResolverBug)
         {
             using (var response = await Http.GetAsync(url))
             {
@@ -365,9 +365,8 @@ namespace VRC.PackageManagement.Automation
                 var hash = GetHashForBytes(bytes);
                 manifest.zipSHA256 = hash; // putting the hash in here for now
 
-                // Workaround for bug of vpm-resolver
                 // see: https://github.com/vrchat-community/creator-companion/issues/226
-                if (!url.Contains('?'))
+                if (workaroundForResolverBug && !url.Contains('?'))
                     url += '?';
 
                 // Point manifest towards release

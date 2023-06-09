@@ -14,6 +14,11 @@ namespace VRC.PackageManagement.Automation.Multi
         public string bannerUrl { get; set; }
         public List<PackageInfo> packages { get; set; }
 		public List<string> githubRepos { get; set; }
+
+        // For repository for vpm-resolver, we have to add workaround to upgrade vpm-resolver.
+        // For other repositories, does not need so this is optional.
+        // See https://github.com/vrchat-community/creator-companion/issues/226
+        public bool workaroundForResolverBug { get; set; }
     }
 
     public class InfoLink {
