@@ -18,6 +18,10 @@
           "type": "string",
           "description": "PackageName"
         },
+        "PackageListingSuffix": {
+          "type": "string",
+          "description": "Suffix to append to the listing package name and ID"
+        },
         "Help": {
           "type": "boolean",
           "description": "Shows the help text for this build assembly"
