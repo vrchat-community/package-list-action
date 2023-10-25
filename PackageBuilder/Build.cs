@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using ICSharpCode.SharpZipLib.Zip;
 using Newtonsoft.Json;
@@ -19,6 +20,29 @@ using ListingSource = VRC.PackageManagement.Automation.Multi.ListingSource;
 
 namespace VRC.PackageManagement.Automation
 {
+    // Pads numbers with `0` to the length of the longest number in the strings
+    // Using Regex is also fast and avoids interop with shlwapi.dll
+    public static class ListExtensions
+    {
+        public static IOrderedEnumerable<T> OrderByAlphaNumeric<T>(this IEnumerable<T> source, Func<T, string> selector)
+        {
+            int max = source
+                .SelectMany(i => Regex.Matches(selector(i), @"\d+").Cast<Match>().Select(m => (int?)m.Value.Length))
+                .Max() ?? 0;
+
+            return source.OrderBy(i => Regex.Replace(selector(i), @"\d+", m => m.Value.PadLeft(max, '0')));
+        }
+
+        public static IOrderedEnumerable<T> OrderByAlphaNumericDescending<T>(this IEnumerable<T> source, Func<T, string> selector)
+        {
+            int max = source
+                .SelectMany(i => Regex.Matches(selector(i), @"\d+").Cast<Match>().Select(m => (int?)m.Value.Length))
+                .Max() ?? 0;
+
+            return source.OrderByDescending(i => Regex.Replace(selector(i), @"\d+", m => m.Value.PadLeft(max, '0')));
+        }
+    }
+
     [GitHubActions(
         "GHTest",
         GitHubActionsImage.UbuntuLatest,
@@ -234,7 +258,7 @@ namespace VRC.PackageManagement.Automation
                 
                 Serilog.Log.Information($"Made listingInfo {JsonConvert.SerializeObject(listingInfo, JsonWriteOptions)}");
 
-                var latestPackages = packages.OrderByDescending(p => p.Version).DistinctBy(p => p.Id).ToList();
+                var latestPackages = packages.OrderByAlphaNumericDescending(p => p.Version).DistinctBy(p => p.Id).ToList();
                 Serilog.Log.Information($"LatestPackages: {JsonConvert.SerializeObject(latestPackages, JsonWriteOptions)}");
                 var formattedPackages = latestPackages.ConvertAll(p => new {
                     Name = p.Id,
