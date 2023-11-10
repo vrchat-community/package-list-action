@@ -289,18 +289,15 @@ namespace VRC.PackageManagement.Automation
             // collect packages by repository to reduce request per repository
             foreach (var (packageId, package) in listSourceVpmPackages)
             {
-                if (package.sources == null || package.sources.Length == 0)
+                if (package.source == null)
                 {
-                    Serilog.Log.Warning($"Source repositories for {packageId} is not defined! This package will be ignored.");
+                    Serilog.Log.Error($"Source repositories for {packageId} is not defined! This package will be ignored.");
                     continue;
                 }
 
-                foreach (var sourceUrl in package.sources)
-                {
-                    if (!packagesByRepository.TryGetValue(sourceUrl, out var packageInfos))
-                        packagesByRepository.Add(sourceUrl, packageInfos = new List<(string id, VpmPackageInfo info)>());
-                    packageInfos.Add((packageId, package));
-                }
+                if (!packagesByRepository.TryGetValue(package.source, out var packageInfos))
+                    packagesByRepository.Add(package.source, packageInfos = new List<(string id, VpmPackageInfo info)>());
+                packageInfos.Add((packageId, package));
             }
 
             // fetch packages

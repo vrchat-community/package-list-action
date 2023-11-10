@@ -37,7 +37,7 @@ namespace VRC.PackageManagement.Automation.Multi
     public class VpmPackageInfo
     {
         /// <summary>URL of source vpm repository</summary>
-        public string[] sources { get; set; }
+        public string source { get; set; }
 
         /// <summary>True if you want to include prerelease of this package to your repository.</summary>
         public bool includePrerelease { get; set; }
