@@ -369,7 +369,7 @@ namespace VRC.PackageManagement.Automation
                     result.Add(manifest);
 
                     // if there are unknown dependency packages, warn
-                    if (!manifest.Dependencies.Keys.All(knownPackages.Contains))
+                    if (!manifest.VPMDependencies.Keys.All(knownPackages.Contains))
                     {
                         // TODO: should this be error and omit from package listing?
                         Serilog.Log.Warning(
