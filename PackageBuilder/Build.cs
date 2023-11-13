@@ -300,17 +300,36 @@ namespace VRC.PackageManagement.Automation
                 packageInfos.Add((packageId, package));
             }
 
+            var knownPackages = CollectKnownPackages(listSourceVpmPackages, packages);
+
             // fetch packages
             var repositories = await Task.WhenAll(packagesByRepository.Select(p =>
-                DownloadPackageManifestFromVpmRepository(p.Key, p.Value)));
+                DownloadPackageManifestFromVpmRepository(p.Key, p.Value, knownPackages)));
 
             // add to packages
             foreach (var manifests in repositories)
                 packages.AddRange(manifests);
         }
 
+        HashSet<string> CollectKnownPackages(Dictionary<string,VpmPackageInfo> listSourceVpmPackages, List<VRCPackageManifest> packages)
+        {
+            var packageIds = new HashSet<string>();
+
+            // packages in official / curated is known packages
+            packageIds.UnionWith(Repos.Official.GetAllWithVersions().Keys);
+            packageIds.UnionWith(Repos.Curated.GetAllWithVersions().Keys);
+
+            // packages will be picked from other repositories are known packages
+            packageIds.UnionWith(listSourceVpmPackages.Keys);
+
+            // packages added to repository from URL or github repository are known packages
+            packageIds.UnionWith(packages.Select(x => x.Id));
+
+            return packageIds;
+        }
+
         async Task<IEnumerable<VRCPackageManifest>> DownloadPackageManifestFromVpmRepository(string url,
-            List<(string id, VpmPackageInfo info)> packages)
+            List<(string id, VpmPackageInfo info)> packages, HashSet<string> knownPackages)
         {
             Serilog.Log.Information($"Downloading from vpm repository {url}");
             var response = await Http.GetAsync(url);
@@ -348,6 +367,15 @@ namespace VRC.PackageManagement.Automation
 
                     Serilog.Log.Information($"Found {PackageName(manifest)} {manifest.Version}, adding to listing.");
                     result.Add(manifest);
+
+                    // if there are unknown dependency packages, warn
+                    if (!manifest.Dependencies.Keys.All(knownPackages.Contains))
+                    {
+                        // TODO: should this be error and omit from package listing?
+                        Serilog.Log.Warning(
+                            $"We found some missing dependency packages in {packageId} version {version}: " +
+                            string.Concat(", ", manifest.Dependencies.Keys.Where(dep => !knownPackages.Contains(dep))));
+                    }
                 }
             }
 
