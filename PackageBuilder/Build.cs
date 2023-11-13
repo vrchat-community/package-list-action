@@ -340,18 +340,22 @@ namespace VRC.PackageManagement.Automation
 
                     // In Settings.JsonReadOptions, we have JsonConverter that deserializes IVRCPackage with VRCPackageManifest
                     // so this cast should not be failed.
-                    if (package is not VRCPackageManifest vpmPackageInfo)
+                    if (package is not VRCPackageManifest manifest)
                     {
                         Serilog.Log.Error($"logic failure: deserialized IVRCPackage is not VRCPackageManifest!");
                         continue;
                     }
 
-                    result.Add(vpmPackageInfo);
+                    Serilog.Log.Information($"Found {PackageName(manifest)} {manifest.Version}, adding to listing.");
+                    result.Add(manifest);
                 }
             }
 
             return result;
         }
+
+        string PackageName(VRCPackageManifest manifest) =>
+            string.IsNullOrEmpty(manifest.displayName) ? manifest.name : $"{manifest.name} ({manifest.displayName})";
 
         GitHubClient _client;
         GitHubClient Client
