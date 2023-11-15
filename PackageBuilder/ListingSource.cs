@@ -14,6 +14,7 @@ namespace VRC.PackageManagement.Automation.Multi
         public string bannerUrl { get; set; }
         public List<PackageInfo> packages { get; set; }
 		public List<string> githubRepos { get; set; }
+        public Dictionary<string, VpmPackageInfo> vpmPackages { get; set; }
     }
 
     public class InfoLink {
@@ -31,5 +32,14 @@ namespace VRC.PackageManagement.Automation.Multi
     {
         public string id { get; set; }
         public List<string> releases { get; set; }
+    }
+
+    public class VpmPackageInfo
+    {
+        /// <summary>URL of source vpm repository</summary>
+        public string source { get; set; }
+
+        /// <summary>True if you want to include prerelease of this package to your repository.</summary>
+        public bool includePrerelease { get; set; }
     }
 }
