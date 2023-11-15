@@ -374,7 +374,7 @@ namespace VRC.PackageManagement.Automation
                         // TODO: should this be error and omit from package listing?
                         Serilog.Log.Warning(
                             $"We found some missing dependency packages in {packageId} version {version}: " +
-                            string.Join(", ", manifest.Dependencies.Keys.Where(dep => !knownPackages.Contains(dep))));
+                            string.Join(", ", manifest.VPMDependencies.Keys.Where(dep => !knownPackages.Contains(dep))));
                     }
                 }
             }
