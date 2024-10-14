@@ -56,7 +56,13 @@ else
     export DOTNET_EXE="$DOTNET_DIRECTORY/dotnet"
 fi
 
+FRAMEWORK="net6.0"
+if dotnet --list-sdks | grep ^8 > /dev/null; then
+  FRAMEWORK="net8.0"
+fi
+
 echo "Microsoft (R) .NET Core SDK version $("$DOTNET_EXE" --version)"
+echo "Using Framework $FRAMEWORK"
 
 "$DOTNET_EXE" build "$BUILD_PROJECT_FILE" /nodeReuse:false /p:UseSharedCompilation=false -nologo -clp:NoSummary --verbosity quiet
-"$DOTNET_EXE" run --project "$BUILD_PROJECT_FILE" --no-build -- "$@"
+"$DOTNET_EXE" run --project "$BUILD_PROJECT_FILE" --no-build --framework "$FRAMEWORK" -- "$@"
