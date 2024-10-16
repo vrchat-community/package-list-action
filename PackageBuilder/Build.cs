@@ -93,10 +93,10 @@ namespace VRC.PackageManagement.Automation
         {
             var result = new ListingSource()
             {
-                name = PackageListingSuffix != ""
+                name = !string.IsNullOrWhiteSpace(PackageListingSuffix)
                     ? $"{manifest.displayName} {PackageListingSuffix}"
                     : $"{manifest.displayName}",
-                id = PackageListingSuffix != ""
+                id = !string.IsNullOrWhiteSpace(PackageListingSuffix)
                     ? $"{manifest.name}.{PackageListingSuffix.ToLower()}"
                     : $"{manifest.name}",
                 author = new VRC.PackageManagement.Automation.Multi.Author()
