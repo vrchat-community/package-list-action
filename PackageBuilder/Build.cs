@@ -13,9 +13,12 @@ using Nuke.Common;
 using Nuke.Common.CI.GitHubActions;
 using Nuke.Common.IO;
 using Octokit;
+using VRC.PackageManagement.Automation.Multi;
+using VRC.PackageManagement.Core;
 using VRC.PackageManagement.Core.Types.Packages;
 using ProductHeaderValue = Octokit.ProductHeaderValue;
 using ListingSource = VRC.PackageManagement.Automation.Multi.ListingSource;
+using Version = SemanticVersioning.Version;
 
 namespace VRC.PackageManagement.Automation
 {
@@ -189,6 +192,10 @@ namespace VRC.PackageManagement.Automation
                     packages.Add(manifest);
                 }
 
+                // download package manifest from other vpm repository
+                if (listSource.vpmPackages != null)
+                    await LoadPackageInfo(listSource.vpmPackages, packages);
+
                 // Copy listing-source.json to new Json Object
                 Serilog.Log.Information($"All packages prepared, generating Listing.");
                 var repoList = new VRCRepoList(packages)
@@ -274,6 +281,109 @@ namespace VRC.PackageManagement.Automation
                 
                 Serilog.Log.Information($"Saved Listing to {savePath}.");
             });
+
+        async Task LoadPackageInfo(Dictionary<string, VpmPackageInfo> listSourceVpmPackages, List<VRCPackageManifest> packages)
+        {
+            var packagesByRepository = new Dictionary<string, List<(string id, VpmPackageInfo info)>>();
+
+            // collect packages by repository to reduce request per repository
+            foreach (var (packageId, package) in listSourceVpmPackages)
+            {
+                if (package.source == null)
+                {
+                    Serilog.Log.Error($"Source repositories for {packageId} is not defined! This package will be ignored.");
+                    continue;
+                }
+
+                if (!packagesByRepository.TryGetValue(package.source, out var packageInfos))
+                    packagesByRepository.Add(package.source, packageInfos = new List<(string id, VpmPackageInfo info)>());
+                packageInfos.Add((packageId, package));
+            }
+
+            var knownPackages = CollectKnownPackages(listSourceVpmPackages, packages);
+
+            // fetch packages
+            var repositories = await Task.WhenAll(packagesByRepository.Select(p =>
+                DownloadPackageManifestFromVpmRepository(p.Key, p.Value, knownPackages)));
+
+            // add to packages
+            foreach (var manifests in repositories)
+                packages.AddRange(manifests);
+        }
+
+        HashSet<string> CollectKnownPackages(Dictionary<string,VpmPackageInfo> listSourceVpmPackages, List<VRCPackageManifest> packages)
+        {
+            var packageIds = new HashSet<string>();
+
+            // packages in official / curated is known packages
+            packageIds.UnionWith(Repos.Official.GetAllWithVersions().Keys);
+            packageIds.UnionWith(Repos.Curated.GetAllWithVersions().Keys);
+
+            // packages will be picked from other repositories are known packages
+            packageIds.UnionWith(listSourceVpmPackages.Keys);
+
+            // packages added to repository from URL or github repository are known packages
+            packageIds.UnionWith(packages.Select(x => x.Id));
+
+            return packageIds;
+        }
+
+        async Task<IEnumerable<VRCPackageManifest>> DownloadPackageManifestFromVpmRepository(string url,
+            List<(string id, VpmPackageInfo info)> packages, HashSet<string> knownPackages)
+        {
+            Serilog.Log.Information($"Downloading from vpm repository {url}");
+            var response = await Http.GetAsync(url);
+            var jsonText = await response.Content.ReadAsStringAsync();
+            var repository = JsonConvert.DeserializeObject<VRCRepoList>(jsonText, Settings.JsonReadOptions);
+
+            var result = new List<VRCPackageManifest>();
+
+            foreach (var (packageId, packageInfo) in packages)
+            {
+                if (!repository.Versions.TryGetValue(packageId, out var versions))
+                {
+                    Serilog.Log.Warning($"{packageId} is not defined in {url}!");
+                    continue;
+                }
+
+                foreach (var (versionString, package) in versions.Versions)
+                {
+                    if (!Version.TryParse(versionString, out var version))
+                    {
+                        Serilog.Log.Warning($"We found invalid version of {packageId} in {url}: {versionString}");
+                        continue;
+                    }
+
+                    if (!packageInfo.includePrerelease && version.IsPreRelease) continue;
+                    // TODO: add option to specify include version range
+
+                    // In Settings.JsonReadOptions, we have JsonConverter that deserializes IVRCPackage with VRCPackageManifest
+                    // so this cast should not be failed.
+                    if (package is not VRCPackageManifest manifest)
+                    {
+                        Serilog.Log.Error($"logic failure: deserialized IVRCPackage is not VRCPackageManifest!");
+                        continue;
+                    }
+
+                    Serilog.Log.Information($"Found {PackageName(manifest)} {manifest.Version}, adding to listing.");
+                    result.Add(manifest);
+
+                    // if there are unknown dependency packages, warn
+                    if (!manifest.VPMDependencies.Keys.All(knownPackages.Contains))
+                    {
+                        // TODO: should this be error and omit from package listing?
+                        Serilog.Log.Warning(
+                            $"We found some missing dependency packages in {packageId} version {version}: " +
+                            string.Join(", ", manifest.VPMDependencies.Keys.Where(dep => !knownPackages.Contains(dep))));
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        string PackageName(VRCPackageManifest manifest) =>
+            string.IsNullOrEmpty(manifest.displayName) ? manifest.name : $"{manifest.name} ({manifest.displayName})";
 
         GitHubClient _client;
         GitHubClient Client
