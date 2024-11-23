@@ -16,7 +16,7 @@ using Octokit;
 using VRC.PackageManagement.Core.Types.Packages;
 using ProductHeaderValue = Octokit.ProductHeaderValue;
 using ListingSource = VRC.PackageManagement.Automation.Multi.ListingSource;
-using SemVer = SemanticVersioning.Version;
+using VPMVersion = VRC.PackageManagement.Core.Types.VPMVersion.Version;
 
 namespace VRC.PackageManagement.Automation
 {
@@ -235,7 +235,7 @@ namespace VRC.PackageManagement.Automation
                 
                 Serilog.Log.Information($"Made listingInfo {JsonConvert.SerializeObject(listingInfo, JsonWriteOptions)}");
 
-                var latestPackages = packages.OrderByDescending(p => new SemVer(p.Version, true)).DistinctBy(p => p.Id).ToList();
+                var latestPackages = packages.OrderByDescending(p => new VPMVersion(p.Version, true)).DistinctBy(p => p.Id).ToList();
                 Serilog.Log.Information($"LatestPackages: {JsonConvert.SerializeObject(latestPackages, JsonWriteOptions)}");
                 var formattedPackages = latestPackages.ConvertAll(p => new {
                     Name = p.Id,
