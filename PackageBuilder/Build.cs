@@ -172,15 +172,6 @@ namespace VRC.PackageManagement.Automation
                     );
                 }
 
-                // Add GitHub repos if included
-                if (listSource.githubRepos != null && listSource.githubRepos.Count > 0)
-                {
-                    foreach (string ownerSlashName in listSource.githubRepos)
-                    {
-                        possibleReleaseUrls.AddRange(await GetReleaseZipUrlsFromGitHubRepo(ownerSlashName));
-                    }
-                }
-
                 // Add each release url to the packages collection if it's not already in the listing, and its zip is valid
                 foreach (string url in possibleReleaseUrls)
                 {
@@ -202,6 +193,18 @@ namespace VRC.PackageManagement.Automation
                     Serilog.Log.Information($"Found {manifest.Id} ({manifest.name}) {manifest.Version}, adding to listing.");
                     packages.Add(manifest);
                 }
+
+                // Add GitHub repos if included
+                // We handle them differently has they have a some verifications
+                if (listSource.githubRepos != null && listSource.githubRepos.Count > 0)
+                {
+                    foreach (string ownerSlashName in listSource.githubRepos)
+                    {
+                        List<VRCPackageManifest> repoManifests = await GetReleaseManifestsFromGitHubRepo(ownerSlashName);
+                        packages.AddRange(repoManifests);
+                    }
+                }
+
 
                 // Copy listing-source.json to new Json Object
                 Serilog.Log.Information($"All packages prepared, generating Listing.");
@@ -307,7 +310,12 @@ namespace VRC.PackageManagement.Automation
             }
         }
         
-        async Task<List<string>> GetReleaseZipUrlsFromGitHubRepo(string ownerSlashName)
+        /**
+        * Fetch the Github Releases Assets from Github
+        * We base our list on the latest package id
+        * If one of the releases id is different from the latest id, we will ignore the release
+        */
+        async Task<List<VRCPackageManifest>> GetReleaseManifestsFromGitHubRepo(string ownerSlashName)
         {
             // Split string into owner and repo, or skip if invalid.
             var parts = ownerSlashName.Split('/');
@@ -325,6 +333,32 @@ namespace VRC.PackageManagement.Automation
                 Assert.Fail($"Could not get remote repo {owner}/{name}.");
                 return null;
             }
+
+            Serilog.Log.Information($"Analyzing repo {owner}/{name}");
+
+            // Fetch the latest release id
+            var latestRelease = await Client.Repository.Release.GetLatest(owner, name);
+            if (latestRelease == null)
+            {
+                Serilog.Log.Information("Found no releases");
+                return null;
+            }
+
+            var latestReleaseAssetUrl = latestRelease.Assets.Where(asset => asset.Name.EndsWith(".zip")).Select(asset => asset.BrowserDownloadUrl).First();
+            if (latestReleaseAssetUrl == null)
+            {
+                Serilog.Log.Information("Found no valid asset in latest release");
+                return null;
+            }
+
+            var latestReleaseManifest = await HashZipAndReturnManifest(latestReleaseAssetUrl);
+            if (latestReleaseManifest == null)
+            {
+                Serilog.Log.Information("Found no valid manifest in latest release");
+                return null;
+            }
+            string latestReleasePackageId = latestReleaseManifest.Id;
+
             
             // Go through each release
             var releases = await Client.Repository.Release.GetAll(owner, name);
@@ -334,14 +368,34 @@ namespace VRC.PackageManagement.Automation
                 return null;
             }
 
-            var result = new List<string>();
+            var releaseUrlList = new List<string>();
             
             foreach (Octokit.Release release in releases)
             {
-                result.AddRange(release.Assets.Where(asset => asset.Name.EndsWith(".zip")).Select(asset => asset.BrowserDownloadUrl));
+                releaseUrlList.AddRange(release.Assets.Where(asset => asset.Name.EndsWith(".zip")).Select(asset => asset.BrowserDownloadUrl));
             }
 
-            return result;
+            var manifestList = new List<VRCPackageManifest>();
+
+            foreach (string releaseUrl in releaseUrlList)
+            {
+                var manifest = await HashZipAndReturnManifest(releaseUrl);
+                if (manifest == null) {
+                    Serilog.Log.Information($"Release package has no manifest. Ignoring. {releaseUrl}");
+                    continue; 
+                }
+
+                if (manifest.Id != latestReleasePackageId)
+                {
+                    Serilog.Log.Information($"Release ({manifest.name} - {manifest.Version}) package id different from latest package id. Ignoring.");
+                    continue;
+                }
+
+                Serilog.Log.Information($"Found {manifest.Id} ({manifest.name}) {manifest.Version}, adding to listing.");
+                manifestList.Add(manifest);
+            }
+
+            return manifestList;
         }
 
         // Keeping this for now to ensure existing listings are not broken
